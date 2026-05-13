@@ -49,13 +49,14 @@ login_senha = dict(
     )
 )
 
-admin_login = dict(
-    re.findall(
-        r"usuario_admin:\s*(\S+)\s*[\r\n]+senha_admin:\s*(\S+)",
-        texto,
-        flags=re.IGNORECASE
-    )
+match = re.search(
+    r"usuario_admin:\s*(\S+)\s*[\r\n]+senha_admin:\s*(\S+)",
+    texto,
+    flags=re.IGNORECASE
 )
+
+admin_login = match.group(1)
+admin_senha = match.group(2)
 
 # =========================================
 # FUNÇÕES
@@ -135,7 +136,7 @@ if not st.session_state.logado:
     if not st.session_state.usuario or not st.session_state.senha:
         st.stop()
 
-    elif st.session_state.usuario == admin_login[0] and st.session_state.senha == admin_login[1]:
+    elif st.session_state.usuario == admin_login and st.session_state.senha == admin_senha:
         st.success("Bem-vindo(a), administrador(a). Carregando...")
         st.session_state.logado = True
         st.session_state.admin = True
