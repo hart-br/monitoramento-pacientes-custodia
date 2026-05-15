@@ -261,7 +261,7 @@ if st.session_state.admin:
         st.info("Espaço para administradores deste sistema (apenas CESMAD)")
         st.dataframe(df)
 
-        arquivo_xlsx = converter_df_para_xlsx(censurar(df))
+        arquivo_xlsx = converter_df_para_xlsx(df)
 
         st.download_button(
             label="Baixar planilha em Excel",
