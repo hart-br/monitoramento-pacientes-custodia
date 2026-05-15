@@ -119,6 +119,15 @@ def censurar(df):
             df[col] = "(CENSURADO)"
     return df
 
+def converter_df_para_xlsx(df):
+    buffer = BytesIO()
+
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Planilha")
+
+    buffer.seek(0)
+    return buffer
+
 # =========================================
 # LOGIN E SETTING INICIAL
 # =========================================
@@ -251,3 +260,12 @@ if st.session_state.admin:
     with aba3:
         st.info("Espaço para administradores deste sistema (apenas CESMAD)")
         st.dataframe(df)
+
+        arquivo_xlsx = converter_df_para_xlsx(censurar(df))
+
+        st.download_button(
+            label="Baixar planilha em Excel",
+            data=arquivo_xlsx,
+            file_name="planilha_monitoramento.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
