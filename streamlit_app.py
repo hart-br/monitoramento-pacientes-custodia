@@ -193,13 +193,13 @@ else:
 with aba1:
     st.header("Planilha completa")
     st.dataframe(censurar(df))
-    st.info("Para fins de privacidade, os nomes dos pacientes foram censurados.")
+    st.info("Para fins de privacidade, o CPF dos pacientes foram censurados.")
 
 with aba2:
     st.info("Digite um CPF válido (formatado como 000.000.000-00) e aperte enter. Se houver informações cadastradas, elas serão recuperadas")
     cpf = st.text_input("CPF")
     if cpf:
-        cpf_valido = re.search(r"\d{3}\.?\d{3}\.?\d{3}-?\d{2}", cpf)
+        cpf_valido = re.search(r"\d{3}\.\d{3}\.\d{3}-\d{2}", cpf)
 
         if cpf_valido:
             cols = [x for x in df.columns if x not in preenchimento_automatico]
