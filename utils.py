@@ -74,3 +74,12 @@ class Utils:
             df.to_excel(writer, index=False)
         output.seek(0)
         return output.getvalue()
+
+    def df_login(self, login_normal):
+        login = []
+        for usuario, senha in login_normal.items():
+            login.append({
+                "Usuário": usuario,
+                "Senha": senha
+            })
+        return pd.DataFrame(login)
