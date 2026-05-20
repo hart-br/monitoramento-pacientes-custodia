@@ -4,7 +4,7 @@ import time
 from storage import Storage
 from utils import Utils
 from auth import Auth
-from config import gerar_box, preenchimento_automatico
+from config import Config, preenchimento_automatico
 from forms import Forms
 
 # =========================================
@@ -13,6 +13,9 @@ from forms import Forms
 
 #Tela de carregamento
 st.set_page_config("Monitoramento RAPS")
+config = Config()
+config.definir_layout()
+
 placeholder = st.empty()
 placeholder.info("Iniciando o sistema. Favor aguardar.")
 
@@ -30,27 +33,35 @@ if not auth.logar():
 df = storage.carregar_df()
 pdr, grade = storage.carregar_arquivos()
 utils = Utils(pdr, grade, storage)
-forms = Forms(gerar_box(pdr, grade))
+forms = Forms(config.gerar_box(pdr, grade))
 
 # =========================================
 # INTERFACE PRINCIPAL
 # =========================================
 
-st.title("Monitoramento de pacientes - custódia")
+st.markdown("<h1 style='text-align: center;'>Monitoramento de Pacientes - Custódia</h1>",
+            unsafe_allow_html=True)
 
 if not st.session_state.admin:
     aba1, aba2, aba3 = st.tabs(["planilha geral", "adicionar novo paciente", "seus pacientes"])
 
 else:
     aba1, aba2, aba3, aba4, aba5 = st.tabs(["planilha geral", "adicionar novo paciente",
-                                      "planilha completa (admin)", "relatório (admin)", "registrar novo login"])
+                                      "planilha completa (admin)", "relatório (admin)", "usuários e senhas (admin)"])
 
 with aba1:
-    st.header("Planilha completa")
+    st.markdown(
+        "<h2 style='text-align: center;'>Planilha Geral</h2>",
+        unsafe_allow_html=True
+    )
     st.dataframe(utils.censurar(df))
     st.info("Para fins de privacidade, o CPF dos pacientes foram censurados.")
 
 with aba2:
+    st.markdown(
+        "<h2 style='text-align: center;'>Cadastrar Novo Paciente</h2>",
+        unsafe_allow_html=True
+    )
     st.info("Digite um CPF válido (formatado como 000.000.000-00) e aperte enter. Se houver informações cadastradas, elas serão recuperadas")
     cpf = st.text_input("CPF")
     if cpf:
@@ -78,6 +89,10 @@ with aba2:
 
 if not st.session_state.admin:
     with aba3:
+        st.markdown(
+            "<h2 style='text-align: center;'>Verificar Informações Cadastradas</h2>",
+            unsafe_allow_html=True
+        )
         st.info("Verifique as informações dos seus pacientes aqui.")
         df_usuario = df[df["Usuário"] == st.session_state.usuario].reset_index(drop=True)
         if len(df_usuario) > 0:
@@ -89,6 +104,10 @@ if not st.session_state.admin:
 
 if st.session_state.admin:
     with aba3:
+        st.markdown(
+            "<h2 style='text-align: center;'>Planilha Completa</h2>",
+            unsafe_allow_html=True
+        )
         st.info("Espaço exclusivo para administradores do sistema 😎")
         st.dataframe(df)
 
@@ -101,9 +120,17 @@ if st.session_state.admin:
         )
 
     with aba4:
+        st.markdown(
+            "<h2 style='text-align: center;'>Relatórios</h2>",
+            unsafe_allow_html=True
+        )
         st.info("Espaço exclusivo para administradores do sistema 😎")
         st.info("Mas ainda em construção. Volte mais tarde 😓")
 
     with aba5:
+        st.markdown(
+            "<h2 style='text-align: center;'>Usuários e Senhas</h2>",
+            unsafe_allow_html=True
+        )
         st.info("Espaço exclusivo para administradores do sistema 😎")
-        st.info("Mas ainda em construção. Volte mais tarde 😓")
+        st.dataframe(utils.df_login(login_senha))
