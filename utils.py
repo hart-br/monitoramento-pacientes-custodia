@@ -50,11 +50,14 @@ class Utils:
             referenciados.extend([y.strip() for y in municipio.split(",")])
         return origem in referenciados
 
-    def completar_paciente(self, paciente, cpf):
+    def completar_paciente(self, paciente, cpf, hospital_fim):
         paciente["CPF"] = cpf
         paciente["Data"] = self.storage.pegar_data()
         paciente["Usuário"] = st.session_state.usuario
-        paciente["hospital final"] = [x for x in paciente["hospitais encaminhados"].split(", ")][-1]
+        if hospital_fim:
+            paciente["hospital final"] = [x for x in paciente["hospitais encaminhados"].split(", ")][-1]
+        else:
+            paciente["hospital final"] = None
         if self.verificar_colunas_para_grade(paciente):
             grade_bool = self.verificar_encaminhamento_grade(paciente)
             if grade_bool:
