@@ -4,7 +4,7 @@ import time
 from storage import Storage
 from utils import Utils
 from auth import Auth
-from config import gerar_box
+from config import gerar_box, preenchimento_automatico
 from forms import Forms
 
 # =========================================
@@ -39,7 +39,7 @@ forms = Forms(gerar_box(pdr, grade))
 st.title("Monitoramento de pacientes - custódia")
 
 if not st.session_state.admin:
-    aba1, aba2 = st.tabs(["planilha geral", "adicionar novo paciente"])
+    aba1, aba2, aba3 = st.tabs(["planilha geral", "adicionar novo paciente", "seus pacientes"])
 
 else:
     aba1, aba2, aba3, aba4, aba5 = st.tabs(["planilha geral", "adicionar novo paciente",
@@ -65,16 +65,27 @@ with aba2:
                 else:
                     st.info("Paciente ainda não cadastrado. Favor inserir dados.")
 
-            paciente = forms.gerar_cols(cpf, df, existence)
+            paciente, hospital_fim = forms.gerar_cols(cpf, df, existence)
             if st.button("salvar e anexar na planilha as informações"):
                 with st.spinner("Aguarde, salvando..."):
-                    storage.salvar_df(paciente, cpf, utils, existence)
+                    storage.salvar_df(paciente, cpf, utils, existence, hospital_fim)
                 st.success("Salvo com sucesso! Atualizando planilha...")
                 time.sleep(0.5)
                 st.rerun()
 
         else:
             st.error("CPF inválido. Tente novamente.")
+
+if not st.session_state.admin:
+    with aba3:
+        st.info("Verifique as informações dos seus pacientes aqui.")
+        df_usuario = df[df["Usuário"] == st.session_state.usuario].reset_index(drop=True)
+        if len(df_usuario) > 0:
+            st.dataframe(df_usuario)
+            st.write("As colunas abaixo são preenchidas automaticamente pelo sistema:")
+            st.write(f"\"" + f"\", \"".join(preenchimento_automatico) + f"\".")
+        else:
+            st.error("Seu usuário ainda não tem paciente cadastrado. Cadastre e retorne nesta aba.")
 
 if st.session_state.admin:
     with aba3:
@@ -91,7 +102,7 @@ if st.session_state.admin:
 
     with aba4:
         st.info("Espaço exclusivo para administradores do sistema 😎")
-        st.info("Mas ainda em construção. Volte mais tarde 😓")
+        df_filtrada = st.fi
 
     with aba5:
         st.info("Espaço exclusivo para administradores do sistema 😎")
