@@ -50,8 +50,8 @@ class Storage:
     def pegar_data(_self):
         return datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y")
 
-    def salvar_df(self, paciente, cpf, utils, existence):
-        paciente = utils.completar_paciente(paciente, cpf)
+    def salvar_df(self, paciente, cpf, utils, existence, hospital_fim):
+        paciente = utils.completar_paciente(paciente, cpf, hospital_fim)
         utils.verificar_internet()
 
         df = self.carregar_df()
