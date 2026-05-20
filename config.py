@@ -1,9 +1,9 @@
 import dropbox
-import streamlit as st
+import streamlit as at
 
 cols_censurar = ["CPF"]
 cols_esconder = ["Usuário"]
-preenchimento_automatico = ["Usuário", "Data", "CPF", "encaminhamento conforme grade de referência?"]
+preenchimento_automatico = ["Usuário", "Data", "CPF", "encaminhamento conforme grade de referência?", "hospital final"]
 
 APP_KEY = st.secrets["APP_KEY"]
 APP_SECRET = st.secrets["APP_SECRET"]
