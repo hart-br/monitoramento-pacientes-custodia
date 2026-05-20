@@ -102,7 +102,7 @@ if st.session_state.admin:
 
     with aba4:
         st.info("Espaço exclusivo para administradores do sistema 😎")
-        df_filtrada = st.fi
+        st.info("Mas ainda em construção. Volte mais tarde 😓")
 
     with aba5:
         st.info("Espaço exclusivo para administradores do sistema 😎")
