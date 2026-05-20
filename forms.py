@@ -9,7 +9,7 @@ class Forms:
         self.data = ["Data", "data da internação", "data da alta médica", "data de envio do caso para juiz articulador",
              "data da decisão judicial  expressa da cessação da internação", "data da desospitalização do paciente"]
         self.simples = ["Nome do paciente"]
-        self.expand = ["Observações (sinalizar dificuldades de infraestrutura, jornada em outros leitos, negativa de outro hospital)"]
+        self.expand = ["Observações (sinalizar fatores como dificuldades de infraestrutura, de negativa de hospitais etc.)"]
         self.box = box
         self.especial = ["hospitais encaminhados"]
 
@@ -37,25 +37,26 @@ class Forms:
                             n_hospital += 1
                             n_aceito += 1
 
-                            if i == 0:
+                            if i == len(hospitais_cp) -1:
+                                hospitais.append(
+                                    st.selectbox("Qual foi o próximo hospital encaminhado?",
+                                                 self.box[col], index=self.box[col].index(hospitais_cp[i]), key=n_hospital))
+                                aceito = st.selectbox("O paciente foi aceito no hospital?", opcoes_box, key=n_aceito)
+                                fim = aceito != "não"
+                                st.write("")
+
+                            elif i == 0:
                                 hospitais.append(st.selectbox("Qual o primeiro hospital que o paciente foi encaminhado?",
                                                               self.box[col], index=self.box[col].index(hospitais_cp[i]), key=n_hospital))
                                 aceito = st.selectbox("O paciente foi aceito no hospital?", opcoes_box, index=2, key=n_aceito)
                                 st.write("")
 
-                            elif i != len(hospitais_cp) - 1:
+                            else:
                                 hospitais.append(st.selectbox("Qual foi o próximo hospital encaminhado?",
                                                  self.box[col], index=self.box[col].index(hospitais_cp[i]), key=n_hospital))
                                 aceito = st.selectbox("O paciente foi aceito no hospital?", opcoes_box, index=2, key=n_aceito)
                                 st.write("")
 
-                            else:
-                                hospitais.append(
-                                    st.selectbox("Qual foi o próximo hospital encaminhado?",
-                                                 self.box[col], index=self.box[col].index(hospitais_cp[i]), key=n_hospital))
-                                aceito = st.selectbox("O paciente foi aceito no hospital?", opcoes_box, key=n_aceito)
-                                aceito = aceito != "não"
-                                st.write("")
 
                     else:
                         n_hospital = 300
@@ -63,15 +64,15 @@ class Forms:
 
                         hospitais.append(st.selectbox("Qual o primeiro hospital que o paciente foi encaminhado?", self.box[col], key=n_hospital))
                         aceito = st.selectbox("O paciente foi aceito no hospital?", opcoes_box, key=n_aceito)
-                        aceito = aceito != "não"
+                        fim = aceito != "não"
                         st.write("")
 
-                    while not aceito:
+                    while not fim:
                         n_hospital += 1
                         n_aceito += 1
                         hospitais.append(st.selectbox("Qual foi o próximo hospital encaminhado?", self.box[col], key=n_hospital))
                         aceito = st.selectbox("O paciente foi aceito no hospital?", opcoes_box, key=n_aceito)
-                        aceito = aceito != "não"
+                        fim = aceito != "não"
                         st.write("")
 
                     nova_linha[col] = ", ".join(hospitais)
@@ -83,6 +84,7 @@ class Forms:
                 else:
                     nova_linha[col] = st.selectbox(col, self.box[col])
 
+
             elif col in self.data:
                 if existence and pd.notna(linha.iloc[0][col]):
                     data = st.date_input(f"{col} (Selecionar no calendário)",
@@ -90,6 +92,8 @@ class Forms:
                                                                          dayfirst=True).date())
                 else:
                     data = st.date_input(f"{col} (Selecionar no calendário)", value=None)
+
+                nova_linha[col] = data
                 if data is not None:
                     nova_linha[col] = data.strftime("%d/%m/%Y")
 
@@ -106,4 +110,4 @@ class Forms:
                 else:
                     nova_linha[col] = st.text_area(col)
 
-        return nova_linha
+        return nova_linha, aceito == "sim"
