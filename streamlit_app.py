@@ -117,8 +117,8 @@ if st.session_state.admin:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
         st.info("Filtrar por usuário/regional:")
-        filtro = st.multiselect("usuário/regional", [""] + df["Usuário"].unique().tolist())
-        if filtro != "":
+        filtro = st.multiselect("usuário/regional", df["Usuário"].unique().tolist())
+        if filtro:
             st.dataframe(df[df["Usuário"]==filtro])
 
     with aba4:
