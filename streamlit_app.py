@@ -109,7 +109,7 @@ if st.session_state.admin:
             unsafe_allow_html=True
         )
         st.info("Espaço exclusivo para administradores do sistema 😎")
-        filtro = st.sidebar.multiselect("usuário/regional", df["Usuário"].unique().tolist())
+        filtro = st.multiselect("usuário/regional",df["Usuário"].dropna().unique().tolist())
         df_filtrada = df[df["Usuário"].isin(filtro)] if filtro else df.copy()
         st.dataframe(df_filtrada)
         st.download_button(label="Baixar planilha em Excel",
