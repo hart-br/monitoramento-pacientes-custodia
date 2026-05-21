@@ -119,7 +119,7 @@ if st.session_state.admin:
         st.info("Filtrar por usuário/regional:")
         filtro = st.multiselect("usuário/regional", df["Usuário"].unique().tolist())
         if filtro:
-            st.dataframe(df[df["Usuário"]==filtro])
+            st.dataframe(df[df["Usuário"].isin(filtro)])
 
     with aba4:
         st.markdown(
