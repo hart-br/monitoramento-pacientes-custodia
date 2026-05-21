@@ -1,5 +1,6 @@
 import dropbox
 import streamlit as st
+from unidecode import unidecode
 
 cols_censurar = ["CPF"]
 cols_esconder = ["Usuário"]
@@ -22,11 +23,12 @@ dbx = dropbox.Dropbox(
 
 class Config:
 
-    def gerar_box(self, pdr, grade):
+    @st.cache_data
+    def gerar_box(_self, pdr, grade):
         return {
     "autuação para quem? (geral/específica)": ["geral", "específica"],
     "município de origem": pdr["municipios_formatados"].tolist(),
-    "hospitais encaminhados": grade["Hospital (caso houver)"].unique().tolist(),
+    "hospitais encaminhados": [unidecode(str(x).strip().upper()) for x in grade["Hospital (caso houver)"].unique().tolist()],
     "Acompanhamento RAPS? (se sim, colocar o município)": ["-"] + pdr["municipios_formatados"].tolist()
 }
 
@@ -49,10 +51,27 @@ class Config:
         /* ==========================
            TÍTULOS
         ========================== */
-        h1, h2, h3 {
-            color: #F8FAFC !important;
-            font-weight: 700;
-        }
+        
+        /* Apenas título principal (st.title / h1) */
+h1 {
+    color: #F8FAFC !important; /* branco levemente suave */
+    font-weight: 750 !important;
+    text-align: center;
+    letter-spacing: 0.6px;
+
+    /* sombra discreta para profundidade */
+    text-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.28);
+
+    /* leve espaçamento */
+    margin-bottom: 0.8rem !important;
+}
+
+/* Apenas subtítulos e headers */
+h2, h3 {
+    color: #F8FAFC !important;
+    font-weight: 700;
+}
 
         /* Texto normal */
         p, label {
@@ -153,6 +172,16 @@ class Config:
         ========================== */
         section[data-testid="stSidebar"] {
             background-color: rgba(15,23,42,0.96);
+        }
+        
+        /* Centraliza o conjunto de abas */
+        div[data-testid="stTabs"] div[role="tablist"] {
+            justify-content: center;
+        }
+        
+        /* Opcional: centraliza o texto dentro de cada aba */
+        div[data-testid="stTabs"] button[role="tab"] p {
+            text-align: center;
         }
 
         </style>
