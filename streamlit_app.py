@@ -109,17 +109,13 @@ if st.session_state.admin:
             unsafe_allow_html=True
         )
         st.info("Espaço exclusivo para administradores do sistema 😎")
-        st.dataframe(df)
-        arquivo_xlsx = utils.converter_df_para_xlsx(df)
+        filtro = st.sidebar.multiselect("usuário/regional", df["Usuário"].unique().tolist())
+        df_filtrada = df[df["Usuário"].isin(filtro)] if filtro else df.copy()
+        st.dataframe(df_filtrada)
         st.download_button(label="Baixar planilha em Excel",
-            data=arquivo_xlsx,
+            data=utils.converter_df_para_xlsx(df_filtrada),
             file_name="planilha_monitoramento.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-        st.info("Filtrar por usuário/regional:")
-        filtro = st.multiselect("usuário/regional", df["Usuário"].unique().tolist())
-        if filtro:
-            st.dataframe(df[df["Usuário"].isin(filtro)])
 
     with aba4:
         st.markdown(
