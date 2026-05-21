@@ -22,7 +22,11 @@ class Auth:
         admin_user = self.login_senha_admin[0]
         admin_senha = self.login_senha_admin[1]
 
-        st.session_state.usuario = st.text_input("Digite seu login")
+        st.title("AUTENTICAÇÃO")
+        for _ in range(2):
+            st.write("")
+
+        st.session_state.usuario = st.text_input("Digite seu usuário")
         st.session_state.senha = st.text_input("Digite sua senha", type="password")
 
         usuario = st.session_state.usuario
