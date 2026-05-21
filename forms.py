@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from config import preenchimento_automatico
+from unidecode import unidecode
 
 class Forms:
     def __init__(self, box):
@@ -17,8 +18,10 @@ class Forms:
 
     def gerar_cols(self, cpf, df, existence):
         cols = [x for x in df.columns if x not in preenchimento_automatico]
-        linha = df[df["CPF"] == cpf].reset_index()
-        hospital_final = linha.at[0, "hospital final"]
+        hospital_final = None
+        if existence:
+            linha = df[df["CPF"] == cpf].reset_index()
+            hospital_final = linha.at[0, "hospital final"]
         nova_linha = {}
 
         for col in [x for x in cols if x not in preenchimento_automatico]:
@@ -31,7 +34,8 @@ class Forms:
                     #Se já existir hospitais com ou sem recusa
                     if existence and pd.notna(linha.iloc[0][col]):
                         valor_atual = linha.iloc[0][col]
-                        hospitais_cp = [x.split() for x in valor_atual.split(", ") if x.split() != "-"]
+                        hospitais_cp = [unidecode(x.strip().upper()) for x in valor_atual.split(", ") if x.strip() != "-"]
+                        print(hospitais_cp)
 
                         #Placeholders para controlar iterações
                         n_hospital = 300 #valor aleatorio so para distinguir do n_aceito
@@ -79,7 +83,11 @@ class Forms:
                         fim = aceito != "não"
                         st.write("")
 
-                    nova_linha[col] = ", ".join([x.split() for x in hospitais if x.split() != "-"])
+                    hospitais = [x.strip() for x in hospitais if x.strip() != "-"]
+                    if len(hospitais) > 0:
+                        nova_linha[col] = ", ".join([x.strip() for x in hospitais])
+                    else:
+                        nova_linha[col] = None
                     st.write("")
 
                 elif existence and pd.notna(linha.iloc[0][col]):
