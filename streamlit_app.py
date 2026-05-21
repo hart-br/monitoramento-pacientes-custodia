@@ -98,7 +98,7 @@ if not st.session_state.admin:
         if len(df_usuario) > 0:
             st.dataframe(df_usuario)
             st.write("As colunas abaixo são preenchidas automaticamente pelo sistema:")
-            st.write(f"\"" + f"\", \"".join(preenchimento_automatico) + f"\".")
+            st.write(f"\"" + f"\", \"".join([x for x in preenchimento_automatico if x != "CPF"]) + f"\".")
         else:
             st.error("Seu usuário ainda não tem paciente cadastrado. Cadastre e retorne nesta aba.")
 
@@ -110,14 +110,16 @@ if st.session_state.admin:
         )
         st.info("Espaço exclusivo para administradores do sistema 😎")
         st.dataframe(df)
-
         arquivo_xlsx = utils.converter_df_para_xlsx(df)
-        st.download_button(
-            label="Baixar planilha em Excel",
+        st.download_button(label="Baixar planilha em Excel",
             data=arquivo_xlsx,
             file_name="planilha_monitoramento.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+        st.info("Filtrar por usuário/regional:")
+        filtro = st.multiselect("usuário/regional", [""] + df["Usuário"].unique().tolist())
+        if filtro != "":
+            st.dataframe(df[df["Usuário"]==filtro])
 
     with aba4:
         st.markdown(
