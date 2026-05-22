@@ -131,7 +131,7 @@ if st.session_state.admin:
             with st.spinner("aguarde enquanto o relatório é produzido)"):
                 estatistica = Estatistica()
 
-                relatorio = Relatorio(estatistica.gerar_estatisticas(df, pdr, storage))
+                relatorio = Relatorio(estatistica.gerar_estatisticas(df, pdr, storage, login_senha))
                 pdf = relatorio.gerar_relatorio()
 
                 st.success("PDF criado com sucesso!")
