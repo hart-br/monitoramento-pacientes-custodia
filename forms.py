@@ -14,7 +14,7 @@ class Forms:
         self.frase_1_hosp = "Qual o primeiro hospital que tentaram encaminhar o paciente?"
         self.frase_hosp = "Qual foi o próximo hospital encaminhado?"
         self.frase_aceito = "O paciente foi aceito no hospital?"
-        self.opcoes_box = opcoes_box = ["", "sim", "não"]
+        self.opcoes_box = ["", "sim", "não"]
 
     def gerar_cols(self, cpf, df, existence):
         cols = [x for x in df.columns if x not in preenchimento_automatico]
@@ -34,7 +34,7 @@ class Forms:
                     #Se já existir hospitais com ou sem recusa
                     if existence and pd.notna(linha.iloc[0][col]):
                         valor_atual = linha.iloc[0][col]
-                        hospitais_cp = [unidecode(x.strip().upper()) for x in valor_atual.split(", ") if x.strip() != "-"]
+                        hospitais_cp = [unidecode(x.strip().upper()) for x in valor_atual.split(", ") if x.strip() not in ["-", ""]]
 
                         #Placeholders para controlar iterações
                         n_hospital = 300 #valor aleatorio so para distinguir do n_aceito
@@ -54,7 +54,7 @@ class Forms:
                             st.write("")
 
                             #Pergunta do aceite
-                            if hospital_cp == hospital_final:
+                            if hospital_cp == hospital_final and i == len(hospitais_cp) - 1:
                                 aceito = st.selectbox(self.frase_aceito, self.opcoes_box, index=1, key=n_aceito)
                                 fim = aceito != "não"
                             elif i < len(hospitais_cp) - 1:
