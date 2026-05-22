@@ -69,7 +69,7 @@ class Estatistica:
 
         return recusados, estao_internados, alta_nao_desosp, cessado_nao_desosp, sem_raps, desops
 
-    def gerar_estatisticas(self, df, pdr, storage):
+    def gerar_estatisticas(self, df, pdr, storage, login_senha):
         df = self.formatar_df(df)
         """ ==== INFORMAÇÕES GERAIS ==== """
 
@@ -195,8 +195,10 @@ class Estatistica:
 
         dados_gerais = [f"Total de pacientes: {total_pacientes}", f"Pacientes encaminhados conforme a grade: {total_sim_grade}",
                 f"Pacientes em desacordo com a grade: {total_nao_grade}", f"Pacientes recusados em ao menos um hospital: "
-                f"{total_recusados}", f"Pacientes sem acompanhamento RAPS: {total_sem_raps}", f"Pacientes provindos de "
-                f"{str(total_munics)}, de {str(total_micros)} microrregiões, em {str(total_macros)} macrorregiões diferentes."]
+                f"{total_recusados}", f"Pacientes sem acompanhamento RAPS: {total_sem_raps}",
+                f"Regionais/usuários com informações preenchidas: {len(df["Usuário"].unique())}/{len(login_senha)}",
+                f"Pacientes provindos de {str(total_munics)}, de {str(total_micros)} microrregiões, em "
+                f"{str(total_macros)} macrorregiões diferentes"]
 
         dados_internados = [f"Pacientes que foram ou estão internados: {total_internados}", "Pacientes que não foram internados: "
                 f"{total_nao_internados}", f"Pacientes que estão internados: {total_estao_internados}", f"Pacientes com "
