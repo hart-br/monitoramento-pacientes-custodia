@@ -14,7 +14,7 @@ class Storage:
         self.dbx = dropbox.Dropbox(oauth2_refresh_token=REFRESH_TOKEN,
                                    app_key=APP_KEY,app_secret=APP_SECRET)
 
-    @st.cache_data
+    @st.cache_data(show_spinner=False)
     def coletar_login(_self):
         metadata, response = _self.dbx.files_download(ARQUIVO_LOGIN)
         texto = unidecode(response.content.decode("utf-8"))
@@ -32,12 +32,12 @@ class Storage:
 
         return login_normal, login_admin
 
-    @st.cache_data
+    @st.cache_data(show_spinner=False)
     def carregar_df(_self):
         metadata, response = _self.dbx.files_download(ARQUIVO_DF)
         return pd.read_excel(BytesIO(response.content), engine="openpyxl", dtype=str)
 
-    @st.cache_data
+    @st.cache_data(show_spinner=False)
     def carregar_arquivos(_self):
         metadata, response = _self.dbx.files_download(ARQUIVO_PDR)
         pdr = pd.read_excel(BytesIO(response.content), engine="openpyxl")
