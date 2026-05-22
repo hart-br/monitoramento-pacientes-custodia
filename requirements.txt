@@ -4,3 +4,4 @@ dropbox
 requests
 openpyxl
 Unidecode
+reportlab
