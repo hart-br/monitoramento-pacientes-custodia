@@ -20,7 +20,7 @@ class Forms:
         cols = [x for x in df.columns if x not in preenchimento_automatico]
         hospital_final = None
         if existence:
-            linha = df[df["CPF"] == cpf].reset_index()
+            linha = df[df["CPF"] == cpf].reset_index(drop=True)
             hospital_final = linha.at[0, "hospital final"]
         nova_linha = {}
 
@@ -35,7 +35,6 @@ class Forms:
                     if existence and pd.notna(linha.iloc[0][col]):
                         valor_atual = linha.iloc[0][col]
                         hospitais_cp = [unidecode(x.strip().upper()) for x in valor_atual.split(", ") if x.strip() != "-"]
-                        print(hospitais_cp)
 
                         #Placeholders para controlar iterações
                         n_hospital = 300 #valor aleatorio so para distinguir do n_aceito
@@ -122,4 +121,5 @@ class Forms:
                 else:
                     nova_linha[col] = st.text_area(col)
 
-        return nova_linha, aceito == "sim"
+        hospital_fim = aceito == "sim"
+        return nova_linha, hospital_fim
