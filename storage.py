@@ -54,6 +54,7 @@ class Storage:
         paciente = utils.completar_paciente(paciente, cpf, hospital_fim)
         utils.verificar_internet()
 
+        self.carregar_df.clear()
         df = self.carregar_df()
         paciente = pd.DataFrame([paciente])
 
