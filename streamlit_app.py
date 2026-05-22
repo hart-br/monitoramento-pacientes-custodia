@@ -6,6 +6,8 @@ from utils import Utils
 from auth import Auth
 from config import Config, preenchimento_automatico
 from forms import Forms
+from estatisticas import Estatistica
+from relatorio import Relatorio
 
 # =========================================
 # INICIAL
@@ -75,6 +77,7 @@ with aba2:
                     st.write("")
                 else:
                     st.info("Paciente ainda não cadastrado. Favor inserir dados.")
+                    st.warning("O CPF não poderá ser alterado depois. Verifique se está correto antes de continuar.")
 
             paciente, hospital_fim = forms.gerar_cols(cpf, df, existence)
             if st.button("salvar e anexar na planilha as informações"):
@@ -109,11 +112,11 @@ if st.session_state.admin:
             unsafe_allow_html=True
         )
         st.info("Espaço exclusivo para administradores do sistema 😎")
-        filtro = st.multiselect("filtrar usuário/regional",df["Usuário"].dropna().unique().tolist())
-        df_filtrada = df[df["Usuário"].isin(filtro)] if filtro else df.copy()
-        st.dataframe(df_filtrada)
+        filtro_aba3 = st.multiselect("filtrar usuário/regional",df["Usuário"].dropna().unique().tolist())
+        df_aba3 = df[df["Usuário"].isin(filtro_aba3)] if filtro_aba3 else df.copy()
+        st.dataframe(df_aba3)
         st.download_button(label="Baixar planilha em Excel",
-            data=utils.converter_df_para_xlsx(df_filtrada),
+            data=utils.converter_df_para_xlsx(df_aba3),
             file_name="planilha_monitoramento.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
@@ -123,7 +126,22 @@ if st.session_state.admin:
             unsafe_allow_html=True
         )
         st.info("Espaço exclusivo para administradores do sistema 😎")
-        st.info("Mas ainda em construção. Volte mais tarde 😓")
+
+        if st.button("Produzir relatório"):
+            with st.spinner("aguarde enquanto o relatório é produzido)"):
+                estatistica = Estatistica()
+
+                relatorio = Relatorio(estatistica.gerar_estatisticas(df, pdr, storage))
+                pdf = relatorio.gerar_relatorio()
+
+                st.success("PDF criado com sucesso!")
+                st.download_button(
+                    label="Baixar relatório em PDF",
+                    data=pdf,
+                    file_name="relatorio_pacientes_custodia.pdf",
+                    mime="application/pdf"
+                )
+
 
     with aba5:
         st.markdown(
