@@ -6,9 +6,9 @@ cols_censurar = ["CPF"]
 cols_esconder = ["Usuário"]
 preenchimento_automatico = ["Usuário", "Data", "CPF", "encaminhamento conforme grade de referência?", "hospital final"]
 
-APP_KEY = st.secrets["APP_KEY"]
-APP_SECRET = st.secrets["APP_SECRET"]
-REFRESH_TOKEN = st.secrets["REFRESH_TOKEN"]
+APP_KEY = "x58kbbti7z83sh5"
+APP_SECRET = "8myfzv7rcygnz23"
+REFRESH_TOKEN = "wXE2rDSrwAYAAAAAAAAAATQpT4S3tU7iOwZdgdZkqD4cMmH_SKZPefwlL94-aovf"
 
 ARQUIVO_DF = "/planilha monitoramento.xlsx"
 ARQUIVO_LOGIN = "/login_senha.txt"
@@ -23,7 +23,7 @@ dbx = dropbox.Dropbox(
 
 class Config:
 
-    @st.cache_data
+    @st.cache_data(show_spinner=False)
     def gerar_box(_self, pdr, grade):
         return {
     "autuação para quem? (geral/específica)": ["geral", "específica"],
