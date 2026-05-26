@@ -6,6 +6,11 @@ class Auth:
         self.login_senha = login_senha
         self.login_senha_admin = login_senha_admin
 
+    def sucesso(self):
+        st.session_state.logado = True
+        time.sleep(1)
+        st.rerun()
+
     def logar(self):
         #Verificar logado ou admin
         if "admin" in st.session_state:
@@ -32,22 +37,15 @@ class Auth:
         usuario = st.session_state.usuario
         senha = st.session_state.senha
 
-        if not usuario or not senha:
-            return False
-
-        elif usuario and senha:
+        if st.button("Entrar"):
             if usuario == admin_user and senha == admin_senha:
                 st.success("Bem-vindo(a), administrador(a). Carregando...")
-                st.session_state.logado = True
                 st.session_state.admin = True
-                time.sleep(1)
-                st.rerun()
+                self.sucesso()
 
             if usuario in self.login_senha and senha == self.login_senha[usuario]:
-                    st.success("Sucesso! Carregando...")
-                    st.session_state.logado = True
-                    time.sleep(1)
-                    st.rerun()
+                st.success("Sucesso! Carregando...")
+                self.sucesso()
 
             st.error("Usuário e/ou senha inválido(s)")
             return False
