@@ -4,7 +4,11 @@ from unidecode import unidecode
 
 cols_censurar = ["CPF"]
 cols_esconder = ["Usuário"]
-preenchimento_automatico = ["Usuário", "Data", "CPF", "encaminhamento conforme grade de referência?", "hospital final"]
+preenchimento_automatico = ["Usuário", "Data", "CPF", "encaminhamento conforme grade de referência?", "hospital final",
+                            "hospital final é psiquiátrico?", "RAPS conforme grade de referência?"]
+
+hospitais_psi = ["MARIA MODESTO CRAVO (UBERABA)", "SANATORIO ESPIRITA JOSE DIAS MACHADO (ITUITABA)",
+                 "INSTITUTO RAUL SOARES (BELO HORIZONTE)", "HOSPITAL GEDOR SILVEIRA (SAO SEBASTIAO DO PARAISO)"]
 
 APP_KEY = st.secrets["APP_KEY"]
 APP_SECRET = st.secrets["APP_SECRET"]
@@ -28,8 +32,10 @@ class Config:
         return {
     "autuação para quem? (geral/específica)": ["geral", "específica"],
     "município de origem": pdr["municipios_formatados"].tolist(),
-    "hospitais encaminhados": [unidecode(str(x).strip().upper()) for x in grade["Hospital (caso houver)"].unique().tolist()],
-    "Acompanhamento RAPS? (se sim, colocar o município)": ["-"] + pdr["municipios_formatados"].tolist()
+    "hospitais encaminhados": ["-"] + [unidecode(str(x).strip().upper()) for x in grade[
+        grade["Modalidade de serviço"]=="LEITO SM HG"]["Hospital (caso houver)"].unique().tolist()],
+    "Acompanhamento RAPS? (se sim, colocar o município)": ["Não"] + pdr["municipios_formatados"].tolist(),
+    "Qual o tipo de serviço da RAPS?": ["-"] + grade["Modalidade de serviço"].unique().tolist()
 }
 
     def definir_layout(self):
