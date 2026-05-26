@@ -1,22 +1,14 @@
 import pandas as pd
 import streamlit as st
 import re
-import requests
 from io import BytesIO
-from config import cols_censurar, cols_esconder
+from config import cols_censurar, cols_esconder, hospitais_psi
 
 class Utils:
     def __init__(self, pdr, grade, storage):
         self.pdr = pdr
         self.grade = grade
         self.storage = storage
-
-    def verificar_internet(self):
-        try:
-            requests.get("https://www.google.com", timeout=2)
-        except (requests.ConnectionError, requests.Timeout):
-            st.error("Sem conexão com a internet. Conecte-se à internet e atualize a página.")
-            st.stop()
 
     def censurar(self, df):
         df = df.copy()
@@ -40,6 +32,22 @@ class Utils:
             return True
         return False
 
+    def raps_grade(self, paciente, grade):
+        raps_munic = paciente["Acompanhamento RAPS? (se sim, colocar o município)"]
+        if raps_munic.lower() not in ["não", "-"]:
+            servico = paciente["Qual o tipo de serviço da RAPS?"]
+            paciente_munic = paciente["município de origem"]
+            munics = []
+            for municipio in grade[(grade["Município"]==raps_munic) & (grade["Modalidade de serviço"]==servico)]["Municipios Referenciados "]:
+                if pd.notna(municipio):
+                    munics.extend([x.strip() for x in municipio.split(", ")])
+            if paciente_munic in munics:
+                return "Sim"
+            else:
+                return "Não"
+        else:
+            return None
+
     def verificar_encaminhamento_grade(self, paciente):
         hospital = [x for x in paciente["hospitais encaminhados"].split(", ")][0]
         origem = paciente["município de origem"]
@@ -50,14 +58,22 @@ class Utils:
             referenciados.extend([y.strip() for y in municipio.split(",")])
         return origem in referenciados
 
-    def completar_paciente(self, paciente, cpf, hospital_fim):
+    def completar_paciente(self, paciente, cpf, hospital_fim, grade):
         paciente["CPF"] = cpf
         paciente["Data"] = self.storage.pegar_data()
         paciente["Usuário"] = st.session_state.usuario
+        paciente["RAPS conforme grade de referência?"] = self.raps_grade(paciente, grade)
+
         if hospital_fim:
             paciente["hospital final"] = [x for x in paciente["hospitais encaminhados"].split(", ")][-1]
+            if paciente["hospital final"] in hospitais_psi:
+                paciente["hospital final é psiquiátrico?"] = "Sim"
+            else:
+                paciente["hospital final é psiquiátrico?"] = "Não"
         else:
             paciente["hospital final"] = None
+            paciente["hospital final é psiquiátrico?"] = None
+
         if self.verificar_colunas_para_grade(paciente):
             grade_bool = self.verificar_encaminhamento_grade(paciente)
             if grade_bool:
@@ -66,6 +82,7 @@ class Utils:
                 paciente["encaminhamento conforme grade de referência?"] = "Não"
         else:
             paciente["encaminhamento conforme grade de referência?"] = "Sem informações"
+
         return paciente
 
     def converter_df_para_xlsx(self, df):
