@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
-from config import preenchimento_automatico
+from config import preenchimento_automatico, hospitais_psi
 from unidecode import unidecode
 
 class Forms:
     def __init__(self, box):
         self.data = ["Data", "data da internação", "data da alta médica", "data de envio do caso para juiz articulador",
-             "data da decisão judicial  expressa da cessação da internação", "data da desospitalização do paciente"]
+             "data da decisão judicial  expressa da cessação da internação", "data da desospitalização do paciente",
+             "Data do encaminhamento para RAPS"]
         self.simples = ["Nome do paciente"]
         self.expand = ["Observações (sinalizar fatores como dificuldades de infraestrutura, de negativa de hospitais etc.)"]
         self.box = box
@@ -15,18 +16,26 @@ class Forms:
         self.frase_hosp = "Qual foi o próximo hospital encaminhado?"
         self.frase_aceito = "O paciente foi aceito no hospital?"
         self.opcoes_box = ["", "sim", "não"]
+        self.hospitais = self.box["hospitais encaminhados"] + hospitais_psi
 
-    def gerar_cols(self, cpf, df, existence):
+    def gerar_cols(self, cpf, df, existence, storage):
+        sucesso = True
         cols = [x for x in df.columns if x not in preenchimento_automatico]
         hospital_final = None
         if existence:
             linha = df[df["CPF"] == cpf].reset_index(drop=True)
             hospital_final = linha.at[0, "hospital final"]
         nova_linha = {}
+        datas = []
 
         for col in [x for x in cols if x not in preenchimento_automatico]:
             st.write("")
             if col in self.box:
+                if col == "Qual o tipo de serviço da RAPS?":
+                    if nova_linha["Acompanhamento RAPS? (se sim, colocar o município)"].lower() == "não":
+                        continue
+                    else:
+                        st.info("Foi criado abaixo campo para preenchimento do tipo de serviço da RAPS")
                 if col in self.especial:
                     st.warning("Para cada hospital recusado, surgirá um novo campo para preencher o próximo hospital")
                     hospitais = []
@@ -46,11 +55,11 @@ class Forms:
 
                             #Pergunta do hospital
                             if i == 0:
-                                hospitais.append(st.selectbox(self.frase_1_hosp, self.box[col],
-                                                              index=self.box[col].index(hospitais_cp[i]), key=n_hospital))
+                                hospitais.append(st.selectbox(self.frase_1_hosp, self.hospitais,
+                                                              index=self.hospitais.index(hospitais_cp[i]), key=n_hospital))
                             else:
-                                hospitais.append(st.selectbox(self.frase_hosp, self.box[col],
-                                                              index=self.box[col].index(hospitais_cp[i]), key=n_hospital))
+                                hospitais.append(st.selectbox(self.frase_hosp, self.hospitais,
+                                                              index=self.hospitais.index(hospitais_cp[i]), key=n_hospital))
                             st.write("")
 
                             #Pergunta do aceite
@@ -69,7 +78,7 @@ class Forms:
                         n_hospital = 300
                         n_aceito = 0
 
-                        hospitais.append(st.selectbox(self.frase_1_hosp, self.box[col], key=n_hospital))
+                        hospitais.append(st.selectbox(self.frase_1_hosp, self.hospitais, key=n_hospital))
                         aceito = st.selectbox(self.frase_aceito, self.opcoes_box, key=n_aceito)
                         fim = aceito != "não"
                         st.write("")
@@ -77,7 +86,7 @@ class Forms:
                     while not fim:
                         n_hospital += 1
                         n_aceito += 1
-                        hospitais.append(st.selectbox(self.frase_hosp, self.box[col], key=n_hospital))
+                        hospitais.append(st.selectbox(self.frase_hosp, self.hospitais, key=n_hospital))
                         aceito = st.selectbox(self.frase_aceito, self.opcoes_box, key=n_aceito)
                         fim = aceito != "não"
                         st.write("")
@@ -95,7 +104,6 @@ class Forms:
                 else:
                     nova_linha[col] = st.selectbox(col, self.box[col])
 
-
             elif col in self.data:
                 if existence and pd.notna(linha.iloc[0][col]):
                     data = st.date_input(f"{col} (Selecionar no calendário)",
@@ -105,9 +113,22 @@ class Forms:
                     data = st.date_input(f"{col} (Selecionar no calendário)", value=None)
 
                 nova_linha[col] = data
-                if data is not None:
-                    nova_linha[col] = data.strftime("%d/%m/%Y")
+                datas.append(data)
 
+                #Checar data
+                if data is not None:
+                    if pd.to_datetime(data) > pd.to_datetime(storage.pegar_data(), dayfirst=True):
+                        st.error("A data selecionada está no futuro. Escolha outra.")
+                        sucesso = False
+                    if len(datas) > 1:
+                        if datas[datas.index(data)-1] is None:
+                            st.error("Favor preencher a data anterior antes de preencher esta.")
+                            sucesso = False
+                        elif data < datas[datas.index(data)-1]:
+                            st.error("A data selecionada não pode ser menor que a anterior pela lógica do fluxo. Favor ajustar.")
+                            sucesso = False
+
+                    nova_linha[col] = data.strftime("%d/%m/%Y")
 
             elif col in self.simples:
                 if existence and pd.notna(linha.iloc[0][col]):
@@ -122,4 +143,4 @@ class Forms:
                     nova_linha[col] = st.text_area(col)
 
         hospital_fim = aceito == "sim"
-        return nova_linha, hospital_fim
+        return nova_linha, hospital_fim, sucesso
