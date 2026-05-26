@@ -11,7 +11,6 @@ class Estatistica:
 
 
     def formatar_df(self, df):
-
         for col in df.columns:
             if col in self.cols_str:
                 df[col] = df[col].astype("string")
@@ -19,28 +18,29 @@ class Estatistica:
                 df[col] = pd.to_datetime(df[col], dayfirst=True)
         return df
 
-    def desformatar_df(self, df):
+    def reformatar_df(self, df):
         df = df.copy()
         for col in df.columns:
             if col in self.cols_data:
                 df[col] = df[col].apply(lambda x: x.date().strftime("%d/%m/%Y") if pd.notna(x) else "")
         return df
 
-    def fazer_iter(self, df):
-
+    def fazer_iter(self, df, pdr):
         recusados = []
         estao_internados = []
         alta_nao_desosp = []
         cessado_nao_desosp = []
         sem_raps = []
         desops = []
+        pacientes_macro = pdr.copy()
+        pacientes_macro["qnt pacientes"] = 0
 
         for i, row in df.iterrows():
             #Pegar recusados
             cpf = row["CPF"]
             hospitais = row["hospitais encaminhados"]
             hosp_fim = pd.notna(row["hospital final"])
-            if hospitais and ((len(hospitais.split(", ")) > 1) or (len(hospitais.split(", ")) == 1 and not hosp_fim)):
+            if pd.notna(hospitais) and ((len(hospitais.split(", ")) > 1) or (len(hospitais.split(", ")) == 1 and not hosp_fim)):
                 recusados.append(cpf)
 
             #Pegar internados
@@ -61,19 +61,25 @@ class Estatistica:
 
             #pegar sem raps
             raps = row["Acompanhamento RAPS? (se sim, colocar o município)"]
-            if raps == "-":
+            if "-" in raps or "não" in raps.lower() or "nao" in raps.lower():
                 sem_raps.append(cpf)
 
             if pd.notna(data_desosp):
                 desops.append(cpf)
 
-        return recusados, estao_internados, alta_nao_desosp, cessado_nao_desosp, sem_raps, desops
+            #Pegar macro
+            munic = row["município de origem"]
+            macro_idx = pacientes_macro[pacientes_macro["municipios_formatados"]==munic].index[0]
+            pacientes_macro.at[macro_idx, "qnt pacientes"] += 1
+
+        return recusados, estao_internados, alta_nao_desosp, cessado_nao_desosp, sem_raps, desops, pacientes_macro
 
     def gerar_estatisticas(self, df, pdr, storage, login_senha):
         df = self.formatar_df(df)
+
         """ ==== INFORMAÇÕES GERAIS ==== """
 
-        recusados, estao_internados, alta_nao_desosp, cessado_nao_desosp, sem_raps, desops = self.fazer_iter(df)
+        recusados, estao_internados, alta_nao_desosp, cessado_nao_desosp, sem_raps, desops, pacientes_macro = self.fazer_iter(df, pdr)
 
         total_pacientes = len(df)
 
@@ -101,6 +107,8 @@ class Estatistica:
         total_recusados = len(recusados)
 
         total_sem_raps = len(sem_raps)
+
+        pacientes_macro = pacientes_macro[["Macrorregião de Saúde", "qnt pacientes"]].groupby("Macrorregião de Saúde", as_index=False).sum()
 
         dados_gerais = [total_pacientes, total_grade, total_sim_grade, total_nao_grade, total_macros, pdr_macros,
               total_micros, pdr_micros, total_munics, total_recusados, total_sem_raps]
@@ -173,21 +181,9 @@ class Estatistica:
 
 
         """ === ANEXOS === """
+        anexos = [pacientes_macro, df_internados, df_altados, df_cessados, df_desops, df_sem_raps, pacientes_nao_grade]
 
-        anexo1 = df_internados
-
-        anexo2 = df_altados
-
-        anexo3 = df_cessados
-
-        anexo4 = df_desops
-
-        anexo5 = df_sem_raps
-
-        anexo6 = pacientes_nao_grade
-
-        anexos = [anexo1, anexo2, anexo3, anexo4, anexo5, anexo6]
-        anexos = [self.desformatar_df(x) for x in anexos]
+        anexos = [self.reformatar_df(x) for x in anexos]
 
 
         """ === TRANSFORMAR ESTATÍSTICAS EM LISTAS PARA NOME NO RELATÓRIO === """
@@ -197,7 +193,7 @@ class Estatistica:
                 f"Pacientes em desacordo com a grade: {total_nao_grade}", f"Pacientes recusados em ao menos um hospital: "
                 f"{total_recusados}", f"Pacientes sem acompanhamento RAPS: {total_sem_raps}",
                 f"Regionais/usuários com informações preenchidas: {len(df["Usuário"].unique())}/{len(login_senha)}",
-                f"Pacientes provindos de {str(total_munics)}, de {str(total_micros)} microrregiões, em "
+                f"Pacientes provindos de {str(total_munics)} municípios, de {str(total_micros)} microrregiões, em "
                 f"{str(total_macros)} macrorregiões diferentes"]
 
         dados_internados = [f"Pacientes que foram ou estão internados: {total_internados}", "Pacientes que não foram internados: "
@@ -208,9 +204,10 @@ class Estatistica:
                 f"Pacientes com alta ainda internados 7+ dias: {total_altados_7dias}", f"Pacientes com alta ainda internados "  
                 f"14+ dias: {total_altados_14dias}", f"Pacientes com alta ainda internados 28+ dias: {total_altados_28dias}"]
 
-        anexos_nomes = ["PACIENTES AINDA INTERNADOS", "PACIENTES COM ALTA AINDA INTERNADOS E TEMPO DE INTERNAÇÃO",
+        anexos_nomes = ["PACIENTES POR MACRO", "PACIENTES AINDA INTERNADOS", "PACIENTES COM ALTA AINDA INTERNADOS E TEMPO DE INTERNAÇÃO",
                   "PACIENTES COM INTERNAÇÃO CESSADA, MAS AINDA INTERNADOS", "PACIENTES DESOSPITALIZADOS",
                   "PACIENTES SEM ACOMPANHAMENTO RAPS", "PACIENTES COM ENCAMINHAMENTO EM DESACORDO À GRADE DE REFERÊNCIA DOS SERVIÇOS"]
+
         anexos = {anexos_nomes[i]: x for i, x in enumerate(anexos)}
 
         return dados_gerais, dados_internados, anexos
