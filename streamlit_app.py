@@ -41,7 +41,7 @@ forms = Forms(config.gerar_box(pdr, grade))
 # INTERFACE PRINCIPAL
 # =========================================
 
-st.markdown("<h1 style='text-align: center;'>Monitoramento de Pacientes - Custódia</h1>",
+st.markdown("<h1 style='text-align: center;'>Monitoramento de Pacientes - Audiência de Custódia</h1>",
             unsafe_allow_html=True)
 
 if not st.session_state.admin:
@@ -79,13 +79,16 @@ with aba2:
                     st.info("Paciente ainda não cadastrado. Favor inserir dados.")
                     st.warning("O CPF não poderá ser alterado depois. Verifique se está correto antes de continuar.")
 
-            paciente, hospital_fim = forms.gerar_cols(cpf, df, existence)
-            if st.button("salvar e anexar na planilha as informações"):
-                with st.spinner("Aguarde, salvando..."):
-                    storage.salvar_df(paciente, cpf, utils, existence, hospital_fim)
-                st.success("Salvo com sucesso! Atualizando planilha...")
-                time.sleep(0.5)
-                st.rerun()
+            paciente, hospital_fim, sucesso = forms.gerar_cols(cpf, df, existence, storage)
+            if not sucesso:
+                st.error("Uma das datas se encontra com erro. Corrija para poder prosseguir.")
+            else:
+                if st.button("salvar e anexar na planilha as informações"):
+                    with st.spinner("Aguarde, salvando..."):
+                        storage.salvar_df(paciente, cpf, utils, existence, hospital_fim, grade)
+                    st.success("Salvo com sucesso! Atualizando planilha...")
+                    time.sleep(0.5)
+                    st.rerun()
 
         else:
             st.error("CPF inválido. Tente novamente.")
@@ -100,8 +103,7 @@ if not st.session_state.admin:
         df_usuario = df[df["Usuário"] == st.session_state.usuario].reset_index(drop=True)
         if len(df_usuario) > 0:
             st.dataframe(df_usuario)
-            st.write("As colunas abaixo são preenchidas automaticamente pelo sistema:")
-            st.write(f"\"" + f"\", \"".join([x for x in preenchimento_automatico if x != "CPF"]) + f"\".")
+            st.write("Algumas das colunas foram preenchidas automaticamente pelo sistema, conforme a grade de serviços da RAPS")
         else:
             st.error("Seu usuário ainda não tem paciente cadastrado. Cadastre e retorne nesta aba.")
 
@@ -113,7 +115,7 @@ if st.session_state.admin:
         )
         st.info("Espaço exclusivo para administradores do sistema 😎")
         filtro_aba3 = st.multiselect("filtrar usuário/regional",df["Usuário"].dropna().unique().tolist())
-        df_aba3 = df[df["Usuário"].isin(filtro_aba3)] if filtro_aba3 else df.copy()
+        df_aba3 = df[df["Usuário"].isin(filtro_aba3)].reset_index(drop=True) if filtro_aba3 else df.copy()
         st.dataframe(df_aba3)
         st.download_button(label="Baixar planilha em Excel",
             data=utils.converter_df_para_xlsx(df_aba3),
