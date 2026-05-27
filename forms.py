@@ -28,14 +28,20 @@ class Forms:
         nova_linha = {}
         datas = []
 
-        for col in [x for x in cols if x not in preenchimento_automatico]:
+        for col in cols:
+            if col in preenchimento_automatico:
+                continue
             st.write("")
+
+            if col in ["Qual o tipo de serviço da RAPS?", "Data do encaminhamento para RAPS"]:
+                if nova_linha["Acompanhamento RAPS? (se sim, colocar o município)"].lower() == "não":
+                    nova_linha["Qual o tipo de serviço da RAPS?"] = None
+                    nova_linha["Data do encaminhamento para RAPS"] = None
+                    continue
+                elif col == "Qual o tipo de serviço da RAPS?":
+                    st.info("Foram criados abaixo campos novos para preenchimento sobre a RAPS")
+
             if col in self.box:
-                if col == "Qual o tipo de serviço da RAPS?":
-                    if nova_linha["Acompanhamento RAPS? (se sim, colocar o município)"].lower() == "não":
-                        continue
-                    else:
-                        st.info("Foi criado abaixo campo para preenchimento do tipo de serviço da RAPS")
                 if col in self.especial:
                     st.warning("Para cada hospital recusado, surgirá um novo campo para preencher o próximo hospital")
                     hospitais = []
@@ -121,11 +127,12 @@ class Forms:
                         st.error("A data selecionada está no futuro. Escolha outra.")
                         sucesso = False
                     if len(datas) > 1:
-                        if datas[datas.index(data)-1] is None:
+                        idx_data = len(datas) - 1
+                        if datas[idx_data-1] is None:
                             st.error("Favor preencher a data anterior antes de preencher esta.")
                             sucesso = False
-                        elif data < datas[datas.index(data)-1]:
-                            st.error("A data selecionada não pode ser menor que a anterior pela lógica do fluxo. Favor ajustar.")
+                        elif data < datas[idx_data-1]:
+                            st.error("Pela lógica do fluxo, esta data não pode ser menor que a do campo anterior. Favor ajustar.")
                             sucesso = False
 
                     nova_linha[col] = data.strftime("%d/%m/%Y")
@@ -141,6 +148,13 @@ class Forms:
                     nova_linha[col] = st.text_area(col, value=linha.iloc[0][col])
                 else:
                     nova_linha[col] = st.text_area(col)
+
+            # Checar se RAPS está antes de desospitalização
+            if col == "Acompanhamento RAPS? (se sim, colocar o município)":
+                if nova_linha["Acompanhamento RAPS? (se sim, colocar o município)"].lower() != "não" and (
+                    pd.isna(nova_linha["data da desospitalização do paciente"])):
+                    st.error("O encaminhamento à RAPS ocorre depois da desospitalização. Favor preencher primeiro a data desta.")
+                    sucesso = False
 
         hospital_fim = aceito == "sim"
         return nova_linha, hospital_fim, sucesso
