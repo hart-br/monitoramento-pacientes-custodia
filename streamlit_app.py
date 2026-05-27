@@ -81,7 +81,7 @@ with aba2:
 
             paciente, hospital_fim, sucesso = forms.gerar_cols(cpf, df, existence, storage)
             if not sucesso:
-                st.error("Uma das datas se encontra com erro. Corrija para poder prosseguir.")
+                st.error("Um dos campos preenchidos se encontra com erro. Corrija para poder prosseguir.")
             else:
                 if st.button("salvar e anexar na planilha as informações"):
                     with st.spinner("Aguarde, salvando..."):
