@@ -1,72 +1,102 @@
-import dropbox
-from unidecode import unidecode
-import re
 import pandas as pd
-from io import BytesIO
 import streamlit as st
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from config import (APP_KEY, APP_SECRET, REFRESH_TOKEN, ARQUIVO_GRADE, ARQUIVO_DF,
-                    ARQUIVO_PDR, ARQUIVO_LOGIN)
+import re
+from io import BytesIO
+from config import cols_censurar, cols_esconder, hospitais_psi
 
-class Storage:
-    def __init__(self):
-        self.dbx = dropbox.Dropbox(oauth2_refresh_token=REFRESH_TOKEN,
-                                   app_key=APP_KEY,app_secret=APP_SECRET)
+class Utils:
+    def __init__(self, pdr, grade, storage):
+        self.pdr = pdr
+        self.grade = grade
+        self.storage = storage
 
-    @st.cache_data(show_spinner=False)
-    def coletar_login(_self):
-        metadata, response = _self.dbx.files_download(ARQUIVO_LOGIN)
-        texto = unidecode(response.content.decode("utf-8"))
+    def censurar(self, df):
+        df = df.copy()
+        for col in df.columns:
+            if col in cols_censurar:
+                df[col] = "[CENSURADO]"
+        return df.drop(cols_esconder, axis=1)
 
-        login_normal = dict(re.findall(r"usuario:\s*(\S+)\s*[\r\n]+senha:\s*(\S+)",
-                                       texto,flags=re.IGNORECASE))
+    def validar_cpf(self, cpf):
+        return bool(re.fullmatch(r"\d{3}\.\d{3}\.\d{3}-\d{2}", cpf))
 
-        match_admin = re.search(
-            r"usuario_admin:\s*(\S+)\s*[\r\n]+senha_admin:\s*(\S+)",
-            texto,
-            flags=re.IGNORECASE
-        )
-
-        login_admin = (match_admin.group(1), match_admin.group(2))
-
-        return login_normal, login_admin
-
-    @st.cache_data(show_spinner=False)
-    def carregar_df(_self):
-        metadata, response = _self.dbx.files_download(ARQUIVO_DF)
-        return pd.read_excel(BytesIO(response.content), engine="openpyxl", dtype=str)
-
-    @st.cache_data(show_spinner=False)
-    def carregar_arquivos(_self):
-        metadata, response = _self.dbx.files_download(ARQUIVO_PDR)
-        pdr = pd.read_excel(BytesIO(response.content), engine="openpyxl")
-
-        metadata, response = _self.dbx.files_download(ARQUIVO_GRADE)
-        grade = pd.read_excel(BytesIO(response.content), engine="openpyxl", sheet_name="Grade")
-
-        return pdr, grade
-
-    def pegar_data(_self):
-        return datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y")
-
-    def salvar_df(self, paciente, cpf, utils, existence, hospital_fim, grade):
-        paciente = utils.completar_paciente(paciente, cpf, hospital_fim, grade)
-
-        self.carregar_df.clear()
-        df = self.carregar_df()
-        paciente = pd.DataFrame([paciente])
-
-        if existence:
-            indice = df[df["CPF"] == paciente.iloc[0]["CPF"]].index[0]
-            for col, valor in paciente.iloc[0].items():
-                df.at[indice, col] = valor
-
+    def verificar_existencia_cpf(self, df, cpf):
+        values = df["CPF"].values.tolist()
+        if cpf in values:
+            return True, values.index(cpf)
         else:
-            df = pd.concat([df, paciente], ignore_index=True)
+            return False, None
 
-        excel = utils.converter_df_para_xlsx(df)
+    def verificar_colunas_para_grade(self, paciente):
+        if paciente.get("município de origem") and paciente.get("hospitais encaminhados") and paciente.get("hospitais encaminhados") != "-":
+            return True
+        return False
 
-        self.dbx.files_upload(excel, ARQUIVO_DF, mode=dropbox.files.WriteMode.overwrite)
-        self.carregar_df.clear()
-        return True
+    def raps_grade(self, paciente, grade):
+        raps_munic = paciente["Acompanhamento RAPS? (se sim, colocar o município)"]
+        if raps_munic.lower() not in ["não", "-"]:
+            servico = paciente["Qual o tipo de serviço da RAPS?"]
+            paciente_munic = paciente["município de origem"]
+            munics = []
+            for municipio in grade[(grade["Município"]==raps_munic) & (grade["Modalidade de serviço"]==servico)]["Municipios Referenciados "]:
+                if pd.notna(municipio):
+                    munics.extend([x.strip() for x in municipio.split(", ")])
+            if paciente_munic in munics:
+                return "Sim"
+            else:
+                return "Não"
+        else:
+            return None
+
+    def verificar_encaminhamento_grade(self, paciente):
+        hospital = [x for x in paciente["hospitais encaminhados"].split(", ")][0]
+        origem = paciente["município de origem"]
+        grade = self.grade.copy()
+        grade = grade[grade["Hospital (caso houver)"] == hospital]
+        referenciados = []
+        for municipio in grade["Municipios Referenciados "].dropna():
+            referenciados.extend([y.strip() for y in municipio.split(",")])
+        return origem in referenciados
+
+    def completar_paciente(self, paciente, cpf, hospital_fim, grade):
+        paciente["CPF"] = cpf
+        paciente["Data"] = self.storage.pegar_data()
+        paciente["Usuário"] = st.session_state.usuario
+        paciente["RAPS conforme grade de referência?"] = self.raps_grade(paciente, grade)
+
+        if hospital_fim:
+            paciente["hospital final"] = [x for x in paciente["hospitais encaminhados"].split(", ")][-1]
+            if paciente["hospital final"] in hospitais_psi:
+                paciente["hospital final é psiquiátrico?"] = "Sim"
+            else:
+                paciente["hospital final é psiquiátrico?"] = "Não"
+        else:
+            paciente["hospital final"] = None
+            paciente["hospital final é psiquiátrico?"] = None
+
+        if self.verificar_colunas_para_grade(paciente):
+            grade_bool = self.verificar_encaminhamento_grade(paciente)
+            if grade_bool:
+                paciente["encaminhamento conforme grade de referência?"] = "Sim"
+            else:
+                paciente["encaminhamento conforme grade de referência?"] = "Não"
+        else:
+            paciente["encaminhamento conforme grade de referência?"] = "Sem informações"
+
+        return paciente
+
+    def converter_df_para_xlsx(self, df):
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False)
+        output.seek(0)
+        return output.getvalue()
+
+    def df_login(self, login_normal):
+        login = []
+        for usuario, senha in login_normal.items():
+            login.append({
+                "Usuário": usuario,
+                "Senha": senha
+            })
+        return pd.DataFrame(login)
