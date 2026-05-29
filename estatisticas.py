@@ -74,7 +74,7 @@ class Estatistica:
 
         return recusados, estao_internados, alta_nao_desosp, cessado_nao_desosp, sem_raps, desops, pacientes_macro
 
-    def gerar_estatisticas(self, df, pdr, storage, login_senha):
+    def gerar_estatisticas(self, df, pdr, storage, dados_usuarios):
         df = self.formatar_df(df)
 
         """ ==== INFORMAÇÕES GERAIS ==== """
@@ -87,6 +87,8 @@ class Estatistica:
             return x / total_pacientes
 
         pacientes_nao_grade = df[df["encaminhamento conforme grade de referência?"] == "Não"].reset_index(drop=True)
+        pacientes_nao_grade = pacientes_nao_grade[["Nome do paciente", "CPF", "município de origem",
+                               "autuação para quem? (geral/específica)", "hospitais encaminhados", "hospital final"]]
         pacientes_sim_grade = df[df["encaminhamento conforme grade de referência?"] == "Sim"].reset_index(drop=True)
 
         total_nao_grade = len(pacientes_nao_grade)
@@ -143,9 +145,11 @@ class Estatistica:
         total_internados_28dias = len(internados_28dias)
 
         df_altados = df[df["CPF"].isin(alta_nao_desosp)].reset_index(drop=True)
+        df_altados["tempo_internado"] = pd.to_datetime(storage.pegar_data(), dayfirst=True) - df_altados["data da internação"]
         df_altados["tempo desde alta"] = pd.to_datetime(storage.pegar_data(), dayfirst=True) - df_altados["data da alta médica"]
+        df_altados["tempo_internado"] = df_altados["tempo_internado"].apply(lambda x: x.days)
         df_altados["tempo desde alta"] = df_altados["tempo desde alta"].apply(lambda x: x.days)
-        df_altados = df_altados[["Nome do paciente", "CPF", "tempo desde alta"]].sort_values("tempo desde alta", ascending=False)
+        df_altados = df_altados[["Nome do paciente", "CPF", "tempo_internado", "tempo desde alta"]].sort_values("tempo desde alta", ascending=False)
 
         altados_7dias = df_altados[df_altados["tempo desde alta"] >= 7]
         altados_14dias = df_altados[df_altados["tempo desde alta"] >= 14]
@@ -156,11 +160,12 @@ class Estatistica:
         total_altados_28dias = len(altados_28dias)
 
         df_cessados = df[df["CPF"].isin(cessado_nao_desosp)].reset_index(drop=True)
-        df_cessados["tempo desde cessado"] = pd.to_datetime(storage.pegar_data(), dayfirst=True) - (
+        df_cessados["tempo desde decisão"] = pd.to_datetime(storage.pegar_data(), dayfirst=True) - (
             df_cessados["data da decisão judicial  expressa da cessação da internação"])
-        df_cessados["tempo desde cessado"] = df_cessados["tempo desde cessado"].apply(lambda x: x.days)
-        df_cessados = df_cessados[["Nome do paciente", "CPF", "tempo desde cessado"]].sort_values("tempo desde cessado",
-                                                                                            ascending=False)
+        df_cessados["tempo desde decisão"] = df_cessados["tempo desde decisão"].apply(lambda x: x.days)
+        df_cessados = df_cessados.merge(df_altados[["CPF", "tempo_internado", "tempo desde alta"]], on="CPF", how="left")
+        df_cessados = df_cessados[["Nome do paciente", "CPF", "tempo_internado", "tempo desde alta", "tempo desde decisão"]].sort_values(
+            "tempo desde decisão",ascending=False)
 
         df_sem_raps = df[df["CPF"].isin(sem_raps)].reset_index(drop=True)
 
@@ -173,7 +178,22 @@ class Estatistica:
             df_desops["data da internação"])
         df_desops["tempo_total_internado"] = df_desops["tempo_total_internado"].apply(lambda x: x.days)
         df_desops = df_desops[["Nome do paciente", "CPF", "tempo_desospitalizado", "tempo_total_internado",
-                           "Acompanhamento RAPS? (se sim, colocar o município)"]].sort_values("tempo_desospitalizado", ascending=False)
+                           "Acompanhamento RAPS? (se sim, colocar o município)", "RAPS conforme grade de referência?"]].sort_values("tempo_desospitalizado", ascending=False)
+        df_desops = df_desops.merge(df[["CPF", "município de origem", "Qual o tipo de serviço da RAPS?"]], on="CPF", how="left")
+
+        df_desops_sem_raps = df_desops[df_desops["Acompanhamento RAPS? (se sim, colocar o município)"]=="Não"]
+        df_desops_sem_raps = df_desops_sem_raps.drop(["Acompanhamento RAPS? (se sim, colocar o município)",
+                                         "RAPS conforme grade de referência?"], axis=1)
+
+        df_desops_fora_grade = df_desops[df_desops["RAPS conforme grade de referência?"]=="Não"]
+        df_desops_fora_grade = df_desops_fora_grade.drop(["RAPS conforme grade de referência?"], axis=1)
+
+        df_desops_dentro_grade = df_desops[df_desops["RAPS conforme grade de referência?"]!="Não"]
+        df_desops_dentro_grade = df_desops_dentro_grade.drop(["RAPS conforme grade de referência?"], axis=1)
+
+        pacientes_sum = df.groupby("Usuário").size().reset_index(name="qtd")[["Usuário", "qtd"]]
+        pacientes_usuarios = dados_usuarios.merge(pacientes_sum, left_on="usuario", right_on="Usuário", how="left")[["usuario", "qtd"]]
+        pacientes_usuarios["qtd"] = pacientes_usuarios["qtd"].fillna(0).astype(int)
 
         dados_internados = [total_internados, total_nao_internados, total_estao_internados, total_alta_nao_desosp,
               total_cessado_nao_desosp, total_internados_7dias, total_internados_14dias, total_internados_28dias,
@@ -181,32 +201,35 @@ class Estatistica:
 
 
         """ === ANEXOS === """
-        anexos = [pacientes_macro, df_internados, df_altados, df_cessados, df_desops, df_sem_raps, pacientes_nao_grade]
+        anexos = [pacientes_macro, pacientes_usuarios, pacientes_nao_grade, df_internados, df_altados, df_cessados,
+                  df_desops_sem_raps, df_desops_fora_grade, df_desops_dentro_grade]
 
         anexos = [self.reformatar_df(x) for x in anexos]
-
 
         """ === TRANSFORMAR ESTATÍSTICAS EM LISTAS PARA NOME NO RELATÓRIO === """
         #Escolhi fazer aqui nas estatisticas para, se caso eu mudar as variáveis, ficar mais fácil de localizar no mesmo .py
 
         dados_gerais = [f"Total de pacientes: {total_pacientes}", f"Pacientes encaminhados conforme a grade: {total_sim_grade}",
-                f"Pacientes em desacordo com a grade: {total_nao_grade}", f"Pacientes recusados em ao menos um hospital: "
-                f"{total_recusados}", f"Pacientes sem acompanhamento RAPS: {total_sem_raps}",
-                f"Regionais/usuários com informações preenchidas: {len(df["Usuário"].unique())}/{len(login_senha)}",
+                f"Pacientes cujo primeiro hospital enviado estava em desacordo com a grade: {total_nao_grade}",
+                f"Pacientes recusados em ao menos um hospital: "
+                f"{total_recusados}", f"Pacientes desospitalizados sem acompanhamento RAPS: {len(df_desops_sem_raps)}",
+                f"Regionais/usuários com informações preenchidas: {len(df["Usuário"].unique())}/{len(dados_usuarios)}",
                 f"Pacientes provindos de {str(total_munics)} municípios, de {str(total_micros)} microrregiões, em "
                 f"{str(total_macros)} macrorregiões diferentes"]
 
-        dados_internados = [f"Pacientes que foram ou estão internados: {total_internados}", "Pacientes que não foram internados: "
-                f"{total_nao_internados}", f"Pacientes que estão internados: {total_estao_internados}", f"Pacientes com "
-                f"alta, mas ainda internados: {total_alta_nao_desosp}", "Pacientes com internação cessada, mas ainda internados: "
-                f"{total_cessado_nao_desosp}", f"Pacientes internados 7+ dias: {total_internados_7dias}", f"Pacientes "
-                f"internados 14+ dias: {total_internados_14dias}", f"Pacientes internados 28+ dias: {total_internados_28dias}",
+        dados_internados = [f"Pacientes desospitalizados: {len(df_desops)}", f"Pacientes que estão internados: {total_estao_internados}",
+                f"Pacientes com alta, mas ainda internados: {total_alta_nao_desosp}", "Pacientes com internação cessada por autoridade "
+                "judicial, mas ainda internados: "f"{total_cessado_nao_desosp}", f"Pacientes internados 7+ dias: {total_internados_7dias}",
+                f"Pacientes internados 14+ dias: {total_internados_14dias}", f"Pacientes internados 28+ dias: {total_internados_28dias}",
                 f"Pacientes com alta ainda internados 7+ dias: {total_altados_7dias}", f"Pacientes com alta ainda internados "  
                 f"14+ dias: {total_altados_14dias}", f"Pacientes com alta ainda internados 28+ dias: {total_altados_28dias}"]
 
-        anexos_nomes = ["PACIENTES POR MACRO", "PACIENTES AINDA INTERNADOS", "PACIENTES COM ALTA AINDA INTERNADOS E TEMPO DE INTERNAÇÃO",
-                  "PACIENTES COM INTERNAÇÃO CESSADA, MAS AINDA INTERNADOS", "PACIENTES DESOSPITALIZADOS",
-                  "PACIENTES SEM ACOMPANHAMENTO RAPS", "PACIENTES COM ENCAMINHAMENTO EM DESACORDO À GRADE DE REFERÊNCIA DOS SERVIÇOS"]
+        anexos_nomes = ["PACIENTES POR MACRO", "PACIENTES POR USUÁRIO (REGIONAL/HOSPITAL PSIQUIÁTRICO)",
+                        "PACIENTES CUJO PRIMEIRO HOSPITAL ENCAMINHADO FOI EM DESACORDO COM A GRADE",
+                        "PACIENTES AINDA INTERNADOS", "PACIENTES COM ALTA AINDA INTERNADOS",
+                        "PACIENTES COM INTERNAÇÃO CESSADA POR AUTORIDADE JUDICIAL, MAS AINDA INTERNADOS",
+                        "PACIENTES DESOSPITALIZADOS SEM RAPS", "PACIENTES DESOSPITALIZADOS COM RAPS FORA DA GRADE",
+                        "PACIENTES COM RAPS DE ACORDO COM A GRADE (SUCESSO)"]
 
         anexos = {anexos_nomes[i]: x for i, x in enumerate(anexos)}
 
