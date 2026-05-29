@@ -49,7 +49,7 @@ class Forms:
                     #Se já existir hospitais com ou sem recusa
                     if existence and pd.notna(linha.iloc[0][col]):
                         valor_atual = linha.iloc[0][col]
-                        hospitais_cp = [unidecode(x.strip().upper()) for x in valor_atual.split(", ") if x.strip() not in ["-", ""]]
+                        hospitais_cp = [unidecode(x.strip().upper()) for x in valor_atual.split(",") if x.strip() not in ["-", ""]]
 
                         #Placeholders para controlar iterações
                         n_hospital = 300 #valor aleatorio so para distinguir do n_aceito
@@ -151,9 +151,13 @@ class Forms:
 
             # Checar se RAPS está antes de desospitalização
             if col == "Acompanhamento RAPS? (se sim, colocar o município)":
-                if nova_linha["Acompanhamento RAPS? (se sim, colocar o município)"].lower() != "não" and (
-                    pd.isna(nova_linha["data da desospitalização do paciente"])):
-                    st.error("O encaminhamento à RAPS ocorre depois da desospitalização. Favor preencher primeiro a data desta.")
+                if nova_linha["Acompanhamento RAPS? (se sim, colocar o município)"].lower() != "não":
+                    if pd.isna(nova_linha["data da desospitalização do paciente"]):
+                        st.error("O encaminhamento à RAPS ocorre depois da desospitalização. Favor preencher primeiro a data desta.")
+                        sucesso = False
+            if col == "Qual o tipo de serviço da RAPS?" and nova_linha["Acompanhamento RAPS? (se sim, colocar o município)"].lower() != "não":
+                if nova_linha[col].strip() == "-":
+                    st.error("Informe o tipo de serviço da RAPS.")
                     sucesso = False
 
         hospital_fim = aceito == "sim"
