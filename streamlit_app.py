@@ -4,7 +4,7 @@ import time
 from storage import Storage
 from utils import Utils
 from auth import Auth
-from config import Config, preenchimento_automatico
+from config import Config
 from forms import Forms
 from estatisticas import Estatistica
 from relatorio import Relatorio
@@ -14,7 +14,7 @@ from relatorio import Relatorio
 # =========================================
 
 #Tela de carregamento
-st.set_page_config("Monitoramento RAPS")
+st.set_page_config("Monitoramento RAPS", layout="centered")
 config = Config()
 config.definir_layout()
 
@@ -23,33 +23,31 @@ placeholder.info("Iniciando o sistema. Favor aguardar.")
 
 #Inicializando robôs
 storage = Storage()
-login_senha, login_senha_admin = storage.coletar_login()
-auth = Auth(login_senha, login_senha_admin)
+df = storage.carregar_df()
+dados_usuarios = storage.coletar_login()
+pdr, grade = storage.carregar_arquivos()
+utils = Utils(pdr, grade, storage)
+forms = Forms(config.gerar_box(pdr, grade))
+auth = Auth(dados_usuarios, storage, utils)
 
 #Setting inicial
 placeholder.empty()
 if not auth.logar():
     st.stop()
 
-#Importando arquivos e iniciando últimos robôs
-df = storage.carregar_df()
-pdr, grade = storage.carregar_arquivos()
-utils = Utils(pdr, grade, storage)
-forms = Forms(config.gerar_box(pdr, grade))
-
 # =========================================
 # INTERFACE PRINCIPAL
 # =========================================
 
-st.markdown("<h1 style='text-align: center;'>Monitoramento de Pacientes - Audiência de Custódia</h1>",
+st.markdown("<h1 style='text-align: center;'>Sistema de Monitoramento de Encaminhamentos para Internação Provisória</h1>",
             unsafe_allow_html=True)
 
 if not st.session_state.admin:
-    aba1, aba2, aba3 = st.tabs(["planilha geral", "adicionar novo paciente", "seus pacientes"])
+    aba1, aba2, aba3 = st.tabs(["planilha geral", "cadastrar paciente", "seus pacientes"])
 
 else:
-    aba1, aba2, aba3, aba4, aba5 = st.tabs(["planilha geral", "adicionar novo paciente",
-                                      "planilha completa (admin)", "relatório (admin)", "usuários e senhas (admin)"])
+    aba1, aba2, aba3, aba4, aba5 = st.tabs(["planilha geral", "cadastrar paciente",
+                                      "planilha completa (admin)", "relatório (admin)", "dados dos usuários"])
 
 with aba1:
     st.markdown(
@@ -59,25 +57,24 @@ with aba1:
     st.dataframe(utils.censurar(df))
     st.info("Para fins de privacidade, o CPF dos pacientes foram censurados.")
 
-with aba2:
+with (aba2):
     st.markdown(
         "<h2 style='text-align: center;'>Cadastrar Novo Paciente</h2>",
-        unsafe_allow_html=True
-    )
-    st.info("Digite um CPF válido (formatado como 000.000.000-00) e aperte enter. Se houver informações cadastradas, elas serão recuperadas")
-    cpf = st.text_input("CPF")
+        unsafe_allow_html=True)
+    st.info("Preencha o CPF do paciente (qualquer formatação) e aperte enter. Se houver informações cadastradas, elas serão recuperadas")
+    cpf = st.text_input("CPF").strip()
     if cpf:
-        if utils.validar_cpf(cpf):
-            with st.spinner("pesquisando CPF..."):
-                existence, idx = utils.verificar_existencia_cpf(df, cpf)
-                if existence:
-                    linha = df[df["CPF"] == cpf]
-                    st.write("")
-                    st.success("Paciente localizado. Recuperando dados...")
-                    st.write("")
-                else:
-                    st.info("Paciente ainda não cadastrado. Favor inserir dados.")
-                    st.warning("O CPF não poderá ser alterado depois. Verifique se está correto antes de continuar.")
+        cpf = utils.capturar_cpf(cpf)
+        if cpf:
+            existence, idx = utils.verificar_existencia_cpf(df, cpf)
+            if existence:
+                linha = df[df["CPF"] == cpf]
+                st.write("")
+                st.success("Paciente localizado. Recuperando dados...")
+                st.write("")
+            else:
+                st.info("Paciente ainda não cadastrado. Favor inserir dados.")
+                st.warning("O CPF não poderá ser alterado depois. Verifique se está correto antes de continuar.")
 
             paciente, hospital_fim, sucesso = forms.gerar_cols(cpf, df, existence, storage)
             if not sucesso:
@@ -89,7 +86,6 @@ with aba2:
                     st.success("Salvo com sucesso! Atualizando planilha...")
                     time.sleep(0.5)
                     st.rerun()
-
         else:
             st.error("CPF inválido. Tente novamente.")
 
@@ -133,10 +129,10 @@ if st.session_state.admin:
             with st.spinner("aguarde enquanto o relatório é produzido)"):
                 estatistica = Estatistica()
 
-                relatorio = Relatorio(estatistica.gerar_estatisticas(df, pdr, storage, login_senha))
+                relatorio = Relatorio(estatistica.gerar_estatisticas(df, pdr, storage, dados_usuarios))
                 pdf = relatorio.gerar_relatorio()
 
-                st.success("PDF criado com sucesso!")
+                st.success("PDF criado com sucesso! Clique abaixo para fazer download.")
                 st.download_button(
                     label="Baixar relatório em PDF",
                     data=pdf,
@@ -144,11 +140,10 @@ if st.session_state.admin:
                     mime="application/pdf"
                 )
 
-
     with aba5:
         st.markdown(
             "<h2 style='text-align: center;'>Usuários e Senhas</h2>",
             unsafe_allow_html=True
         )
         st.info("Espaço exclusivo para administradores do sistema 😎")
-        st.dataframe(utils.df_login(login_senha))
+        st.dataframe(dados_usuarios)
