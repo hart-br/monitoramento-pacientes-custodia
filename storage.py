@@ -1,13 +1,12 @@
 import dropbox
-from unidecode import unidecode
-import re
 import pandas as pd
 from io import BytesIO
 import streamlit as st
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from config import (APP_KEY, APP_SECRET, REFRESH_TOKEN, ARQUIVO_GRADE, ARQUIVO_DF,
-                    ARQUIVO_PDR, ARQUIVO_LOGIN)
+                    ARQUIVO_PDR, USUARIOS)
+from unidecode import unidecode
 
 class Storage:
     def __init__(self):
@@ -16,21 +15,12 @@ class Storage:
 
     @st.cache_data(show_spinner=False)
     def coletar_login(_self):
-        metadata, response = _self.dbx.files_download(ARQUIVO_LOGIN)
-        texto = unidecode(response.content.decode("utf-8"))
-
-        login_normal = dict(re.findall(r"usuario:\s*(\S+)\s*[\r\n]+senha:\s*(\S+)",
-                                       texto,flags=re.IGNORECASE))
-
-        match_admin = re.search(
-            r"usuario_admin:\s*(\S+)\s*[\r\n]+senha_admin:\s*(\S+)",
-            texto,
-            flags=re.IGNORECASE
-        )
-
-        login_admin = (match_admin.group(1), match_admin.group(2))
-
-        return login_normal, login_admin
+        metadata, response = _self.dbx.files_download(USUARIOS)
+        df = pd.read_excel(BytesIO(response.content), engine="openpyxl")
+        for col in [x for x in df.columns if x != "ultima_recuperacao"]:
+            df[col] = df[col].fillna("").astype(str).str.strip()
+        df["ultima_recuperacao"] = pd.to_datetime(df["ultima_recuperacao"])
+        return df
 
     @st.cache_data(show_spinner=False)
     def carregar_df(_self):
@@ -44,6 +34,8 @@ class Storage:
 
         metadata, response = _self.dbx.files_download(ARQUIVO_GRADE)
         grade = pd.read_excel(BytesIO(response.content), engine="openpyxl", sheet_name="Grade")
+        for col in ["Hospital (caso houver)", "Município"]:
+            grade[col] = grade[col].apply(lambda x: unidecode(x.strip().upper().replace("  ", " ")) if pd.notna(x) else None)
 
         return pdr, grade
 
@@ -70,3 +62,4 @@ class Storage:
         self.dbx.files_upload(excel, ARQUIVO_DF, mode=dropbox.files.WriteMode.overwrite)
         self.carregar_df.clear()
         return True
+
