@@ -13,11 +13,13 @@ hospitais_psi = ["MARIA MODESTO CRAVO (UBERABA)", "SANATORIO ESPIRITA JOSE DIAS 
 APP_KEY = st.secrets["APP_KEY"]
 APP_SECRET = st.secrets["APP_SECRET"]
 REFRESH_TOKEN = st.secrets["REFRESH_TOKEN"]
+EMAIL = st.secrets["EMAIL"]
+EMAIL_SENHA = st.secrets["EMAIL_SENHA"]
 
 ARQUIVO_DF = "/planilha monitoramento.xlsx"
-ARQUIVO_LOGIN = "/login_senha.txt"
 ARQUIVO_PDR = "/pdr.xlsx"
 ARQUIVO_GRADE = "/grade.xlsx"
+USUARIOS = "/usuarios_dados.xlsx"
 
 dbx = dropbox.Dropbox(
     oauth2_refresh_token=REFRESH_TOKEN,
@@ -35,7 +37,7 @@ class Config:
     "hospitais encaminhados": ["-"] + [unidecode(str(x).strip().upper()) for x in grade[
         grade["Modalidade de serviço"]=="LEITO SM HG"]["Hospital (caso houver)"].unique().tolist()],
     "Acompanhamento RAPS? (se sim, colocar o município)": ["Não"] + pdr["municipios_formatados"].tolist(),
-    "Qual o tipo de serviço da RAPS?": ["-"] + grade["Modalidade de serviço"].unique().tolist()
+    "Qual o tipo de serviço da RAPS?": ["-"] + sorted(grade["Modalidade de serviço"].unique().tolist())
 }
 
     def definir_layout(self):
@@ -57,36 +59,31 @@ class Config:
         /* ==========================
            TÍTULOS
         ========================== */
-        
-        /* Apenas título principal (st.title / h1) */
-h1 {
-    color: #F8FAFC !important; /* branco levemente suave */
-    font-weight: 750 !important;
-    text-align: center;
-    letter-spacing: 0.6px;
 
-    /* sombra discreta para profundidade */
-    text-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.28);
+        h1 {
+            color: #F8FAFC !important;
+            font-weight: 750 !important;
+            text-align: center;
+            letter-spacing: 0.6px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+            margin-bottom: 0.8rem !important;
+        }
 
-    /* leve espaçamento */
-    margin-bottom: 0.8rem !important;
-}
+        h2, h3 {
+            color: #F8FAFC !important;
+            font-weight: 700;
+        }
 
-/* Apenas subtítulos e headers */
-h2, h3 {
-    color: #F8FAFC !important;
-    font-weight: 700;
-}
-
-        /* Texto normal */
-        p, label {
+        /* Texto normal fora do dialog */
+        .stApp p,
+        .stApp label {
             color: #E2E8F0 !important;
         }
 
         /* ==========================
            INPUTS
         ========================== */
+
         .stTextInput input,
         .stTextArea textarea,
         .stDateInput input,
@@ -97,14 +94,12 @@ h2, h3 {
             border: 1px solid rgba(255,255,255,0.15) !important;
         }
 
-        /* Selectbox */
         .stSelectbox div[data-baseweb="select"] > div {
             background-color: rgba(255,255,255,0.94) !important;
             color: #111827 !important;
             border-radius: 12px !important;
         }
 
-        /* Placeholder */
         input::placeholder,
         textarea::placeholder {
             color: #6B7280 !important;
@@ -113,6 +108,7 @@ h2, h3 {
         /* ==========================
            TABELAS
         ========================== */
+
         [data-testid="stDataFrame"] {
             background-color: rgba(230, 230, 230, 0.92) !important;
             border-radius: 16px !important;
@@ -139,8 +135,10 @@ h2, h3 {
 
         /* ==========================
            REMOVER CARD GLOBAL BUGADO
+           Sem afetar dialog
         ========================== */
-        div[data-testid="stVerticalBlock"] > div {
+
+        .stApp div[data-testid="stVerticalBlock"] > div:not([data-testid="stDialog"]) {
             background: transparent !important;
             border: none !important;
             box-shadow: none !important;
@@ -149,45 +147,168 @@ h2, h3 {
         }
 
         /* ==========================
-           BOTÕES
+           BOTÕES GERAIS
         ========================== */
+
         .stButton > button,
         .stDownloadButton > button {
+            background-color: #F8FAFC !important;
+            color: #111827 !important;
             border-radius: 12px !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
             border: none !important;
             padding: 0.6rem 1.2rem !important;
         }
-        
-        /* Forçar texto preto */
+
         .stButton > button *,
         .stDownloadButton > button *,
         .stButton > button span,
-        .stDownloadButton > button span {
-            color: #000000 !important;
+        .stDownloadButton > button span,
+        .stButton > button p,
+        .stDownloadButton > button p {
+            color: #111827 !important;
         }
-        
-        /* Hover */
+
+        .stButton > button:hover,
+        .stDownloadButton > button:hover {
+            background-color: #E2E8F0 !important;
+            color: #111827 !important;
+        }
+
         .stButton > button:hover *,
-        .stDownloadButton > button:hover * {
-            color: #000000 !important;
+        .stDownloadButton > button:hover *,
+        .stButton > button:hover span,
+        .stDownloadButton > button:hover span,
+        .stButton > button:hover p,
+        .stDownloadButton > button:hover p {
+            color: #111827 !important;
         }
 
         /* ==========================
            SIDEBAR
         ========================== */
+
         section[data-testid="stSidebar"] {
             background-color: rgba(15,23,42,0.96);
         }
-        
-        /* Centraliza o conjunto de abas */
+
+        section[data-testid="stSidebar"] * {
+            color: #E2E8F0 !important;
+        }
+
+        /* ==========================
+           ABAS
+        ========================== */
+
         div[data-testid="stTabs"] div[role="tablist"] {
             justify-content: center;
         }
-        
-        /* Opcional: centraliza o texto dentro de cada aba */
+
         div[data-testid="stTabs"] button[role="tab"] p {
             text-align: center;
+        }
+
+        /* ==========================
+           CORREÇÃO DO ST.DIALOG
+        ========================== */
+
+        div[data-testid="stDialog"] {
+            background-color: #FFFFFF !important;
+            border-radius: 18px !important;
+            color: #111827 !important;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35) !important;
+        }
+
+        div[data-testid="stDialog"] > div {
+            background-color: #FFFFFF !important;
+            border-radius: 18px !important;
+            padding: 1.2rem !important;
+        }
+
+        div[data-testid="stDialog"] div[data-testid="stVerticalBlock"] > div {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: initial !important;
+            backdrop-filter: none !important;
+        }
+
+        div[data-testid="stDialog"] h1,
+        div[data-testid="stDialog"] h2,
+        div[data-testid="stDialog"] h3,
+        div[data-testid="stDialog"] p,
+        div[data-testid="stDialog"] label,
+        div[data-testid="stDialog"] span,
+        div[data-testid="stDialog"] div {
+            color: #111827 !important;
+        }
+
+        div[data-testid="stDialog"] input,
+        div[data-testid="stDialog"] textarea {
+            background-color: #FFFFFF !important;
+            color: #111827 !important;
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 10px !important;
+        }
+
+        div[data-testid="stDialog"] input::placeholder,
+        div[data-testid="stDialog"] textarea::placeholder {
+            color: #6B7280 !important;
+        }
+
+        div[data-testid="stDialog"] div[data-baseweb="select"] > div {
+            background-color: #FFFFFF !important;
+            color: #111827 !important;
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 10px !important;
+        }
+
+        div[data-testid="stDialog"] .stButton > button {
+            background-color: #2563EB !important;
+            color: #FFFFFF !important;
+            border: none !important;
+            border-radius: 12px !important;
+            font-weight: 700 !important;
+            padding: 0.6rem 1.2rem !important;
+            opacity: 1 !important;
+        }
+
+        div[data-testid="stDialog"] .stButton > button *,
+        div[data-testid="stDialog"] .stButton > button span,
+        div[data-testid="stDialog"] .stButton > button p {
+            color: #FFFFFF !important;
+        }
+
+        div[data-testid="stDialog"] .stButton > button:hover {
+            background-color: #1D4ED8 !important;
+            color: #FFFFFF !important;
+            opacity: 1 !important;
+        }
+
+        div[data-testid="stDialog"] .stButton > button:hover *,
+        div[data-testid="stDialog"] .stButton > button:hover span,
+        div[data-testid="stDialog"] .stButton > button:hover p {
+            color: #FFFFFF !important;
+        }
+
+        div[data-testid="stDialog"] .stButton > button:disabled {
+            background-color: #94A3B8 !important;
+            color: #FFFFFF !important;
+            opacity: 0.85 !important;
+        }
+
+        div[data-testid="stDialog"] .stButton > button:disabled *,
+        div[data-testid="stDialog"] .stButton > button:disabled span,
+        div[data-testid="stDialog"] .stButton > button:disabled p {
+            color: #FFFFFF !important;
+        }
+
+        div[data-testid="stDialog"] div[data-testid="stAlert"] {
+            border-radius: 12px !important;
+        }
+
+        div[data-testid="stDialog"] div[data-testid="stAlert"] * {
+            color: inherit !important;
         }
 
         </style>
