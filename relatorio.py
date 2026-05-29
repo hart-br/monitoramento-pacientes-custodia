@@ -269,7 +269,7 @@ class Relatorio:
         story = []
 
         story.append(Paragraph(
-            "RELATÓRIO DO SISTEMA DE MONITORAMENTO DE PACIENTES SOB CUSTÓDIA EM MINAS GERAIS",
+            "RELATÓRIO DO SISTEMA DE MONITORAMENTO DE ENCAMINHAMENTOS PARA INTERNAÇÃO PROVISÓRIA EM MINAS GERAIS",
             self.styles["titulo"]
         ))
 
