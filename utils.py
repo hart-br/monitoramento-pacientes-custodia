@@ -3,6 +3,7 @@ import streamlit as st
 import re
 from io import BytesIO
 from config import cols_censurar, cols_esconder, hospitais_psi
+from unidecode import unidecode
 
 class Utils:
     def __init__(self, pdr, grade, storage):
@@ -40,7 +41,7 @@ class Utils:
             munics = []
             for municipio in grade[(grade["Município"]==raps_munic) & (grade["Modalidade de serviço"]==servico)]["Municipios Referenciados "]:
                 if pd.notna(municipio):
-                    munics.extend([x.strip() for x in municipio.split(", ")])
+                    munics.extend([x.strip() for x in municipio.split(",")])
             if paciente_munic in munics:
                 return "Sim"
             else:
@@ -92,11 +93,10 @@ class Utils:
         output.seek(0)
         return output.getvalue()
 
-    def df_login(self, login_normal):
-        login = []
-        for usuario, senha in login_normal.items():
-            login.append({
-                "Usuário": usuario,
-                "Senha": senha
-            })
-        return pd.DataFrame(login)
+    def capturar_cpf(self, cpf):
+        cpf = re.sub(r"\D", "", cpf)
+        if len(cpf) == 11:
+            cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+        else:
+            cpf = None
+        return cpf
