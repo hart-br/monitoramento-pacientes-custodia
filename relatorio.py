@@ -1,17 +1,14 @@
 from reportlab.platypus import (
-    BaseDocTemplate,
+    SimpleDocTemplate,
     Paragraph,
     LongTable,
     Spacer,
     PageBreak,
-    TableStyle,
-    NextPageTemplate,
-    PageTemplate,
-    Frame
+    TableStyle
 )
 from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from io import BytesIO
 
@@ -99,26 +96,6 @@ class Relatorio:
             wordWrap="CJK"
         )
 
-        celula_compacta_style = ParagraphStyle(
-            "CelulaCompacta",
-            fontName="Helvetica",
-            fontSize=5.6,
-            leading=6.8,
-            textColor=cinza_texto,
-            alignment=1,
-            wordWrap="CJK"
-        )
-
-        celula_header_compacta_style = ParagraphStyle(
-            "CelulaHeaderCompacta",
-            fontName="Helvetica-Bold",
-            fontSize=5.6,
-            leading=6.8,
-            textColor=colors.white,
-            alignment=1,
-            wordWrap="CJK"
-        )
-
         return {
             "titulo": titulo_style,
             "subtitulo_relatorio": subtitulo_relatorio_style,
@@ -126,17 +103,13 @@ class Relatorio:
             "header_anexo": header_anexo_style,
             "texto": texto_style,
             "celula": celula_style,
-            "celula_header": celula_header_style,
-            "celula_compacta": celula_compacta_style,
-            "celula_header_compacta": celula_header_compacta_style
+            "celula_header": celula_header_style
         }
 
     def adicionar_rodape(self, canvas, doc):
         canvas.saveState()
 
-        # Usa o tamanho real da página atual.
-        # Isso resolve o posicionamento em páginas A4 retrato e paisagem.
-        largura_pagina, altura_pagina = canvas._pagesize
+        largura_pagina, _ = canvas._pagesize
 
         margem_direita_visual = 0.8 * cm
         margem_inferior_visual = 0.65 * cm
@@ -163,7 +136,7 @@ class Relatorio:
 
         return texto
 
-    def calcular_col_widths(self, df, largura_util, compacta=False):
+    def calcular_col_widths(self, df, largura_util):
         colunas = df.columns.tolist()
 
         if len(colunas) == 0:
@@ -195,7 +168,7 @@ class Relatorio:
             elif "data" in nome:
                 pesos.append(1.45)
             else:
-                pesos.append(1.8 if compacta else 2.0)
+                pesos.append(2.0)
 
         soma_pesos = sum(pesos)
 
@@ -204,13 +177,9 @@ class Relatorio:
             for peso in pesos
         ]
 
-    def montar_dados_tabela(self, df, compacta=False):
-        if compacta:
-            celula_style = self.styles["celula_compacta"]
-            header_style = self.styles["celula_header_compacta"]
-        else:
-            celula_style = self.styles["celula"]
-            header_style = self.styles["celula_header"]
+    def montar_dados_tabela(self, df):
+        celula_style = self.styles["celula"]
+        header_style = self.styles["celula_header"]
 
         dados = []
 
@@ -231,13 +200,12 @@ class Relatorio:
 
         return dados
 
-    def formatar_tabela(self, df, largura_util, compacta=False):
-        dados = self.montar_dados_tabela(df, compacta=compacta)
+    def formatar_tabela(self, df, largura_util):
+        dados = self.montar_dados_tabela(df)
 
         col_widths = self.calcular_col_widths(
             df,
-            largura_util=largura_util,
-            compacta=compacta
+            largura_util=largura_util
         )
 
         tabela = LongTable(
@@ -246,15 +214,6 @@ class Relatorio:
             repeatRows=1,
             splitByRow=True
         )
-
-        if compacta:
-            padding_vertical = 1.4
-            padding_horizontal = 1.4
-            grid_width = 0.25
-        else:
-            padding_vertical = 3
-            padding_horizontal = 2.2
-            grid_width = 0.3
 
         header_color = colors.HexColor("#1E293B")
         linha_alternada = colors.HexColor("#F8FAFC")
@@ -274,13 +233,13 @@ class Relatorio:
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
 
-            ("GRID", (0, 0), (-1, -1), grid_width, grid_color),
+            ("GRID", (0, 0), (-1, -1), 0.3, grid_color),
             ("LINEBELOW", (0, 0), (-1, 0), 0.6, linha_header),
 
-            ("TOPPADDING", (0, 0), (-1, -1), padding_vertical),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), padding_vertical),
-            ("LEFTPADDING", (0, 0), (-1, -1), padding_horizontal),
-            ("RIGHTPADDING", (0, 0), (-1, -1), padding_horizontal),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 2.2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2.2),
         ]))
 
         tabela.hAlign = "CENTER"
@@ -292,75 +251,22 @@ class Relatorio:
 
         self.styles = self.estilos()
 
-        margem_retrato = 1.3 * cm
-        margem_paisagem = 0.55 * cm
-
-        margem_superior_retrato = 1.4 * cm
-        margem_superior_paisagem = 0.9 * cm
-
+        margem = 1.3 * cm
+        margem_superior = 1.4 * cm
         margem_inferior = 1.4 * cm
 
-        largura_retrato = A4[0] - (2 * margem_retrato)
-        altura_retrato = A4[1] - margem_superior_retrato - margem_inferior
+        largura_util = A4[0] - (2 * margem)
 
-        largura_paisagem = landscape(A4)[0] - (2 * margem_paisagem)
-        altura_paisagem = landscape(A4)[1] - margem_superior_paisagem - margem_inferior
-
-        doc = BaseDocTemplate(
+        doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            leftMargin=margem_retrato,
-            rightMargin=margem_retrato,
-            topMargin=margem_superior_retrato,
+            leftMargin=margem,
+            rightMargin=margem,
+            topMargin=margem_superior,
             bottomMargin=margem_inferior
         )
 
-        frame_retrato = Frame(
-            margem_retrato,
-            margem_inferior,
-            largura_retrato,
-            altura_retrato,
-            id="frame_retrato",
-            leftPadding=0,
-            rightPadding=0,
-            topPadding=0,
-            bottomPadding=0
-        )
-
-        frame_paisagem = Frame(
-            margem_paisagem,
-            margem_inferior,
-            largura_paisagem,
-            altura_paisagem,
-            id="frame_paisagem",
-            leftPadding=0,
-            rightPadding=0,
-            topPadding=0,
-            bottomPadding=0
-        )
-
-        template_retrato = PageTemplate(
-            id="Retrato",
-            pagesize=A4,
-            frames=[frame_retrato],
-            onPage=self.adicionar_rodape
-        )
-
-        template_paisagem = PageTemplate(
-            id="Paisagem",
-            pagesize=landscape(A4),
-            frames=[frame_paisagem],
-            onPage=self.adicionar_rodape
-        )
-
-        doc.addPageTemplates([
-            template_retrato,
-            template_paisagem
-        ])
-
         story = []
-
-        story.append(NextPageTemplate("Retrato"))
 
         story.append(Paragraph(
             "RELATÓRIO DO SISTEMA DE MONITORAMENTO DE PACIENTES SOB CUSTÓDIA EM MINAS GERAIS",
@@ -394,19 +300,7 @@ class Relatorio:
         for quote in self.dados_internados:
             story.append(Paragraph(quote, self.styles["texto"]))
 
-        total_anexos = len(self.anexos)
-
-        for i, (texto, df) in enumerate(self.anexos.items()):
-            compacta = i >= total_anexos - 3
-
-            if compacta:
-                template = "Paisagem"
-                largura_util = largura_paisagem
-            else:
-                template = "Retrato"
-                largura_util = largura_retrato
-
-            story.append(NextPageTemplate(template))
+        for texto, df in self.anexos.items():
             story.append(PageBreak())
 
             story.append(Paragraph(texto, self.styles["header_anexo"]))
@@ -415,8 +309,7 @@ class Relatorio:
             if len(df) > 0:
                 story.append(self.formatar_tabela(
                     df,
-                    largura_util=largura_util,
-                    compacta=compacta
+                    largura_util=largura_util
                 ))
             else:
                 story.append(Paragraph(
@@ -424,7 +317,11 @@ class Relatorio:
                     self.styles["texto"]
                 ))
 
-        doc.build(story)
+        doc.build(
+            story,
+            onFirstPage=self.adicionar_rodape,
+            onLaterPages=self.adicionar_rodape
+        )
 
         pdf = buffer.getvalue()
         buffer.close()
