@@ -2,7 +2,7 @@ import pandas as pd
 
 class Estatistica:
     def __init__(self):
-        self.cols_str = ["Nome do paciente", "CPF", "município de origem", "autuação para quem? (geral/específica)",
+        self.cols_str = ["Nome do paciente", "CPF", "município de origem", "autuação para quem?",
                     "hospitais encaminhados", "encaminhamento conforme grade de referência?", "hospital final",
                     "Acompanhamento RAPS? (se sim, colocar o município)", "Usuário",
                     "Observações (sinalizar fatores como dificuldades de infraestrutura, de negativa de hospitais etc.)"]
@@ -88,7 +88,7 @@ class Estatistica:
 
         pacientes_nao_grade = df[df["encaminhamento conforme grade de referência?"] == "Não"].reset_index(drop=True)
         pacientes_nao_grade = pacientes_nao_grade[["Nome do paciente", "CPF", "município de origem",
-                               "autuação para quem? (geral/específica)", "hospitais encaminhados", "hospital final"]]
+                               "autuação para quem?", "hospitais encaminhados", "hospital final", "municipio do hospital final"]]
         pacientes_sim_grade = df[df["encaminhamento conforme grade de referência?"] == "Sim"].reset_index(drop=True)
 
         total_nao_grade = len(pacientes_nao_grade)
