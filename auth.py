@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import pandas as pd
 import dropbox
+from config import USUARIOS
 
 class Auth:
     def __init__(self, usuarios, storage, utils):
@@ -17,12 +18,24 @@ class Auth:
         self.utils = utils
         self.link = "https://monitoramento-pacientes-custodia.streamlit.app/"
 
-    def atualizar_login(self, usuario, hoje):
-        df = self.dados.copy()
-        df.loc[df["usuario"]==usuario, "ultima_recuperacao"] = hoje
-        excel = self.utils.converter_df_para_xlsx(df)
-        self.storage.dbx.files_upload(excel, USUARIOS, mode=dropbox.files.WriteMode.overwrite)
-        self.storage.coletar_login.clear()
+    def atualizar_login(self, usuario, hoje, tentativas=5):
+        for tentativa in range(tentativas):
+            try:
+                df, rev = self.storage.carregar_df_com_rev(USUARIOS)
+                df = self.dados.copy()
+                df.loc[df["usuario"]==usuario, "ultima_recuperacao"] = hoje
+                excel = self.utils.converter_df_para_xlsx(df)
+                self.dbx.files_upload(
+                    excel,
+                    USUARIOS,
+                    mode=dropbox.files.WriteMode.update(rev),
+                    autorename=False,
+                    mute=True
+                )
+                self.storage.coletar_login.clear()
+
+            except dropbox.exceptions.ApiError:
+                time.sleep(2)
 
     def encontrar_usuario(self, df, email):
         for i, principais, copias in zip(df.index, df["email_principal"], df["email_copia"]):
