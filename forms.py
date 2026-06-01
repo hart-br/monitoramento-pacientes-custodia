@@ -8,7 +8,7 @@ class Forms:
         self.data = ["Data", "data da internação", "data da alta médica", "data de envio do caso para juiz articulador",
              "data da decisão judicial  expressa da cessação da internação", "data da desospitalização do paciente",
              "Data do encaminhamento para RAPS"]
-        self.simples = ["Nome do paciente"]
+        self.simples = ["Nome do paciente", "qual municipio ou prestador foi autuado?"]
         self.expand = ["Observações (sinalizar fatores como dificuldades de infraestrutura, de negativa de hospitais etc.)"]
         self.box = box
         self.especial = ["hospitais encaminhados"]
@@ -29,6 +29,7 @@ class Forms:
         datas = []
 
         for col in cols:
+            valor_atual = linha.iloc[0][col]
             if col in preenchimento_automatico:
                 continue
             st.write("")
@@ -47,8 +48,7 @@ class Forms:
                     hospitais = []
 
                     #Se já existir hospitais com ou sem recusa
-                    if existence and pd.notna(linha.iloc[0][col]):
-                        valor_atual = linha.iloc[0][col]
+                    if existence and pd.notna(valor_atual):
                         hospitais_cp = [unidecode(x.strip().upper()) for x in valor_atual.split(",") if x.strip() not in ["-", ""]]
 
                         #Placeholders para controlar iterações
@@ -104,16 +104,15 @@ class Forms:
                         nova_linha[col] = None
                     st.write("")
 
-                elif existence and pd.notna(linha.iloc[0][col]):
-                    valor_atual = linha.iloc[0][col]
+                elif existence and pd.notna(valor_atual):
                     nova_linha[col] = st.selectbox(col, self.box[col], index=self.box[col].index(valor_atual))
                 else:
                     nova_linha[col] = st.selectbox(col, self.box[col])
 
             elif col in self.data:
-                if existence and pd.notna(linha.iloc[0][col]):
+                if existence and pd.notna(valor_atual):
                     data = st.date_input(f"{col} (Selecionar no calendário)",
-                                                    value=pd.to_datetime(linha.iloc[0][col],
+                                                    value=pd.to_datetime(valor_atual,
                                                                          dayfirst=True).date())
                 else:
                     data = st.date_input(f"{col} (Selecionar no calendário)", value=None)
@@ -138,14 +137,20 @@ class Forms:
                     nova_linha[col] = data.strftime("%d/%m/%Y")
 
             elif col in self.simples:
-                if existence and pd.notna(linha.iloc[0][col]):
-                    nova_linha[col] = st.text_input(col, value=linha.iloc[0][col])
+                if col == "qual municipio ou prestador foi autuado?":
+                    if nova_linha["autuação para quem?"] not in ["município", "prestador"]:
+                        nova_linha["qual municipio ou prestador foi autuado?"] = None
+                        continue
+                    else:
+                        st.info("Especifique abaixo")
+                if existence and pd.notna(valor_atual):
+                    nova_linha[col] = st.text_input(col, value=valor_atual)
                 else:
                     nova_linha[col] = st.text_input(col)
 
             elif col in self.expand:
-                if existence and pd.notna(linha.iloc[0][col]):
-                    nova_linha[col] = st.text_area(col, value=linha.iloc[0][col])
+                if existence and pd.notna(valor_atual):
+                    nova_linha[col] = st.text_area(col, value=valor_atual)
                 else:
                     nova_linha[col] = st.text_area(col)
 
