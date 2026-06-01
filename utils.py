@@ -3,7 +3,6 @@ import streamlit as st
 import re
 from io import BytesIO
 from config import cols_censurar, cols_esconder, hospitais_psi
-from unidecode import unidecode
 
 class Utils:
     def __init__(self, pdr, grade, storage):
@@ -16,6 +15,14 @@ class Utils:
         for col in df.columns:
             if col in cols_censurar:
                 df[col] = "[CENSURADO]"
+        for i, nome in df["Nome do paciente"].items():
+            nomes = nome.strip().split(" ")
+            nome_final = nomes[0]
+            if len(nomes) > 1:
+                for nome in nomes[1:]:
+                    nome_final += " " + nome[0] + "[...]"
+            df.at[i, "Nome do paciente"] = nome_final
+
         return df.drop(cols_esconder, axis=1)
 
     def validar_cpf(self, cpf):
@@ -32,6 +39,12 @@ class Utils:
         if paciente.get("município de origem") and paciente.get("hospitais encaminhados") and paciente.get("hospitais encaminhados") != "-":
             return True
         return False
+
+    def munic_hospital_final(self, paciente, df):
+        grade = self.grade
+        hosp = paciente.get("hospital final")
+        munic = grade.loc[(grade["Hospital (caso houver)"]==hosp) & (grade["Modalidade de serviço"]=="LEITO SM HG"), "Município"].iloc[0]
+        return munic if munic else "Não encontrado"
 
     def raps_grade(self, paciente, grade):
         raps_munic = paciente["Acompanhamento RAPS? (se sim, colocar o município)"]
@@ -59,7 +72,7 @@ class Utils:
             referenciados.extend([y.strip() for y in municipio.split(",")])
         return origem in referenciados
 
-    def completar_paciente(self, paciente, cpf, hospital_fim, grade):
+    def completar_paciente(self, paciente, cpf, hospital_fim, grade, df):
         paciente["CPF"] = cpf
         paciente["Data"] = self.storage.pegar_data()
         paciente["Usuário"] = st.session_state.usuario
@@ -67,6 +80,7 @@ class Utils:
 
         if hospital_fim:
             paciente["hospital final"] = [x for x in paciente["hospitais encaminhados"].split(", ")][-1]
+            paciente["municipio do hospital final"] = self.munic_hospital_final(paciente, df)
             if paciente["hospital final"] in hospitais_psi:
                 paciente["hospital final é psiquiátrico?"] = "Sim"
             else:
@@ -74,6 +88,7 @@ class Utils:
         else:
             paciente["hospital final"] = None
             paciente["hospital final é psiquiátrico?"] = None
+            paciente["municipio do hospital final"] = None
 
         if self.verificar_colunas_para_grade(paciente):
             grade_bool = self.verificar_encaminhamento_grade(paciente)
