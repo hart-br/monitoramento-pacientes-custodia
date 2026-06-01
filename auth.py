@@ -156,5 +156,5 @@ class Auth:
         for _ in range(5):
             st.write("")
 
-        if st.button("Esqueceu a senha? Clique aqui"):
+        if st.button("Esqueceu o login ou a senha? Clique aqui"):
             self.popup_esqueci_senha(df)
