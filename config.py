@@ -32,7 +32,7 @@ class Config:
     @st.cache_data(show_spinner=False)
     def gerar_box(_self, pdr, grade):
         return {
-    "autuação para quem? (geral/específica)": ["geral", "específica"],
+    "autuação para quem?": ["geral", "estado", "município", "prestador"],
     "município de origem": pdr["municipios_formatados"].tolist(),
     "hospitais encaminhados": ["-"] + [unidecode(str(x).strip().upper()) for x in grade[
         grade["Modalidade de serviço"]=="LEITO SM HG"]["Hospital (caso houver)"].unique().tolist()],
