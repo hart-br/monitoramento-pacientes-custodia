@@ -43,11 +43,11 @@ st.markdown("<h1 style='text-align: center;'>Sistema de Monitoramento de Encamin
             unsafe_allow_html=True)
 
 if not st.session_state.admin:
-    aba1, aba2, aba3 = st.tabs(["planilha geral", "cadastrar paciente", "seus pacientes"])
+    aba1, aba2, aba3 = st.tabs(["planilha geral", "cadastrar/editar paciente", "seus pacientes"])
 
 else:
-    aba1, aba2, aba3, aba4, aba5 = st.tabs(["planilha geral", "cadastrar paciente",
-                                      "planilha completa (admin)", "relatório (admin)", "dados dos usuários"])
+    aba1, aba2, aba3, aba4, aba5 = st.tabs(["planilha geral", "cadastrar/editar paciente",
+                                      "planilha completa (admin)", "relatório (admin)", "dados dos usuários (admin)"])
 
 with aba1:
     st.markdown(
@@ -55,11 +55,11 @@ with aba1:
         unsafe_allow_html=True
     )
     st.dataframe(utils.censurar(df))
-    st.info("Para fins de privacidade, o CPF dos pacientes foram censurados.")
+    st.info("Para fins de privacidade, o CPF e os sobrenomes dos pacientes foram censurados.")
 
 with (aba2):
     st.markdown(
-        "<h2 style='text-align: center;'>Cadastrar Novo Paciente</h2>",
+        "<h2 style='text-align: center;'>Cadastrar/Editar Paciente</h2>",
         unsafe_allow_html=True)
     st.info("Preencha o CPF do paciente (qualquer formatação) e aperte enter. Se houver informações cadastradas, elas serão recuperadas")
     cpf = st.text_input("CPF").strip()
@@ -82,7 +82,9 @@ with (aba2):
             else:
                 if st.button("salvar e anexar na planilha as informações"):
                     with st.spinner("Aguarde, salvando..."):
-                        storage.salvar_df(paciente, cpf, utils, existence, hospital_fim, grade)
+                        while not storage.salvar_df(paciente, cpf, utils, hospital_fim, grade, df):
+                            st.error("Outro usuário está salvando dados no momento. Tentando novamente em cinco segundos...")
+                            time.sleep(5)
                     st.success("Salvo com sucesso! Atualizando planilha...")
                     time.sleep(0.5)
                     st.rerun()
@@ -102,6 +104,7 @@ if not st.session_state.admin:
             st.write("Algumas das colunas foram preenchidas automaticamente pelo sistema, conforme a grade de serviços da RAPS")
         else:
             st.error("Seu usuário ainda não tem paciente cadastrado. Cadastre e retorne nesta aba.")
+        st.info('Para alterar informações, favor digitar o CPF do usuário na aba anterior, de "cadastrar/editar paciente"')
 
 if st.session_state.admin:
     with aba3:
