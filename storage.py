@@ -4,14 +4,17 @@ from io import BytesIO
 import streamlit as st
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from dropbox.files import WriteMode
 from config import (APP_KEY, APP_SECRET, REFRESH_TOKEN, ARQUIVO_GRADE, ARQUIVO_DF,
                     ARQUIVO_PDR, USUARIOS)
 from unidecode import unidecode
+import time
 
 class Storage:
     def __init__(self):
         self.dbx = dropbox.Dropbox(oauth2_refresh_token=REFRESH_TOKEN,
                                    app_key=APP_KEY,app_secret=APP_SECRET)
+        self.caminho_lock = "/arquivo_em_uso.lock"
 
     @st.cache_data(show_spinner=False)
     def coletar_login(_self):
@@ -26,6 +29,11 @@ class Storage:
     def carregar_df(_self):
         metadata, response = _self.dbx.files_download(ARQUIVO_DF)
         return pd.read_excel(BytesIO(response.content), engine="openpyxl", dtype=str)
+
+    def carregar_df_com_rev(self, arquivo):
+        metadata, response = self.dbx.files_download(arquivo)
+        df = pd.read_excel(BytesIO(response.content), engine="openpyxl", dtype=str)
+        return df, metadata.rev
 
     @st.cache_data(show_spinner=False)
     def carregar_arquivos(_self):
@@ -42,24 +50,55 @@ class Storage:
     def pegar_data(_self):
         return datetime.now(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y")
 
-    def salvar_df(self, paciente, cpf, utils, existence, hospital_fim, grade):
-        paciente = utils.completar_paciente(paciente, cpf, hospital_fim, grade)
-
-        self.carregar_df.clear()
-        df = self.carregar_df()
+    def salvar_df(self, paciente, cpf, utils, hospital_fim, grade, df, tentativas=5):
+        paciente = utils.completar_paciente(paciente, cpf, hospital_fim, grade, df)
         paciente = pd.DataFrame([paciente])
+        cpf_paciente = paciente.iloc[0]["CPF"]
 
-        if existence:
-            indice = df[df["CPF"] == paciente.iloc[0]["CPF"]].index[0]
-            for col, valor in paciente.iloc[0].items():
-                df.at[indice, col] = valor
+        for tentativa in range(tentativas):
+            try:
+                df, rev = self.carregar_df_com_rev(ARQUIVO_DF)
 
-        else:
-            df = pd.concat([df, paciente], ignore_index=True)
+                if cpf_paciente in df["CPF"].values:
+                    indice = df[df["CPF"] == cpf_paciente].index[0]
 
-        excel = utils.converter_df_para_xlsx(df)
+                    for col, valor in paciente.iloc[0].items():
+                        df.at[indice, col] = valor
 
-        self.dbx.files_upload(excel, ARQUIVO_DF, mode=dropbox.files.WriteMode.overwrite)
-        self.carregar_df.clear()
-        return True
+                else:
+                    df = pd.concat([df, paciente], ignore_index=True)
 
+                excel = utils.converter_df_para_xlsx(df)
+
+                self.dbx.files_upload(
+                    excel,
+                    ARQUIVO_DF,
+                    mode=dropbox.files.WriteMode.update(rev),
+                    autorename=False,
+                    mute=True
+                )
+
+                self.carregar_df.clear()
+                return True
+
+            except dropbox.exceptions.ApiError:
+                st.warning(f"Outro usuário também está salvando. Tentando novamente...")
+                time.sleep(1)
+
+        return False
+
+    def criar_lock(self):
+        try:
+            self.dbx.files_upload(
+                b"em uso",
+                self.caminho_lock,
+                mode=dropbox.files.WriteMode.add,
+                autorename=False)
+            return True
+
+        except dropbox.exceptions.ApiError:
+            print()
+            return False
+
+    def deletar_lock(self):
+        self.dbx.files_delete_v2(self.caminho_lock)
