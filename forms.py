@@ -29,7 +29,8 @@ class Forms:
         datas = []
 
         for col in cols:
-            valor_atual = linha.iloc[0][col]
+            if existence:
+                valor_atual = linha.iloc[0][col]
             if col in preenchimento_automatico:
                 continue
             st.write("")
