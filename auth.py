@@ -51,10 +51,10 @@ class Auth:
     @st.dialog("Recuperar senha")
     def popup_esqueci_senha(self, df):
         st.markdown("""
-        Digite o endereço de e-mail da instituição 
-        (geralmente: cras.[municipio]@saude.mg.gov.br ou  
-        saudemental.[municipio]@saude.mg.gov.br.)
-
+        Digite o endereço de e-mail da instituição <br>
+        (geralmente: cras.[municipio]@saude.mg.gov.br ou <br>
+        saudemental.[municipio]@saude.mg.gov.br.) <br>
+        <br>
         Se existir na base de dados, enviaremos um e-mail de recuperação.
         """)
 
