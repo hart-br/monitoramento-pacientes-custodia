@@ -50,7 +50,7 @@ class Auth:
 
     @st.dialog("Recuperar senha")
     def popup_esqueci_senha(self, df):
-        email = st.text_input("Digite o endereço de e-mail da instituição. Se existir na base de dados, enviaremos um e-mail de recuperação")
+        email = st.text_input("Digite o endereço de e-mail da instituição (geralmente cras.[municipio]@saude.mg.gov.br ou saudemental.[municipio]@saude.mg.gov.br. \nSe existir na base de dados, enviaremos um e-mail de recuperação")
         if st.button("Enviar e-mail de recuperação") and email:
             with st.spinner("carregando..."):
                 sucesso, usuario = self.encontrar_usuario(df, email)
