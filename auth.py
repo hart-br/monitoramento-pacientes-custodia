@@ -56,7 +56,7 @@ class Auth:
         saudemental.[municipio]@saude.mg.gov.br.) <br>
         <br>
         Se existir na base de dados, enviaremos um e-mail de recuperação.
-        """)
+        """, unsafe_allow_html=True)
 
         email = st.text_input("E-mail")
         if st.button("Enviar e-mail de recuperação") and email:
